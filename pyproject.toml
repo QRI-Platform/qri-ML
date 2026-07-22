@@ -4,4 +4,11 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "huggingface>=0.0.1",
+    "langchain>=1.3.14",
+    "langchain-community>=0.4.2",
+    "langchain-pinecone>=0.2.13",
+    "langgraph>=1.2.9",
+    "pydantic>=2.13.4",
+]
