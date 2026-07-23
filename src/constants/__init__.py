@@ -7,3 +7,6 @@ CLOUD_REGION="us-east-1"
 EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 RETRIVER_TOP_K = 4
 NAMESPACE = None
+PUBLIC_TEMP_DIR = "uploads"
+LOGS_DIR = "logs"
+ARTIFACT_FOLDER = "artifacts"

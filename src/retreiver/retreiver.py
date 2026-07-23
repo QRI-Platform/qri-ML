@@ -1,4 +1,5 @@
 import sys
+import json
 from typing import List, Optional, Dict, Any
 from pinecone import Pinecone, ServerlessSpec
 from langchain_pinecone import PineconeVectorStore
@@ -11,6 +12,20 @@ from src.logger import logger
 
 
 class Retriever:
+    @staticmethod
+    def _sanitize_metadata(documents: List[Document]) -> List[Document]:
+        for doc in documents:
+            sanitized = {}
+            for key, value in doc.metadata.items():
+                if isinstance(value, (str, int, float, bool)):
+                    sanitized[key] = value
+                elif isinstance(value, list) and all(isinstance(v, str) for v in value):
+                    sanitized[key] = value
+                else:
+                    sanitized[key] = json.dumps(value, default=str)
+            doc.metadata = sanitized
+        return documents
+
     def __init__(self, retriever_config):
         self.retreiver_config = retriever_config
         self.pc = Pinecone(api_key=app_config.pine_cone_api_key)
@@ -53,6 +68,7 @@ class Retriever:
     async def add_documents(self, vector_store: PineconeVectorStore, documents: List[Document]):
         try:
             logger.info(f"Adding {len(documents)} documents to vector store.")
+            documents = self._sanitize_metadata(documents)
             vector_store.add_documents(documents=documents)
             logger.info("Documents added successfully.")
         except Exception as e:
@@ -82,3 +98,6 @@ class Retriever:
         except Exception as e:
             logger.error(f"Failed to delete namespace {namespace}.")
             raise MyException(e, sys)
+
+
+Retreiver = Retriever
