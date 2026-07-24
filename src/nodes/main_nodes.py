@@ -73,6 +73,7 @@ async def retreiver_node(state: State):
 
 
 async def chat_node(state: State):
+    " this is chat node"
     try:
         if state.summery:
             state.messages = [SystemMessage(content=state.messages)] + state.messages
