@@ -74,6 +74,8 @@ async def retreiver_node(state: State):
 
 async def chat_node(state: State):
     try:
+        if state.summery:
+            state.messages = [SystemMessage(content=state.messages)] + state.messages
         context = "\n\n".join([doc.page_content for doc in state.retreived_results]) if state.retreived_results else ""
         last_message = state.messages[-1].content if state.messages else ""
         formatted = CHAT_PROMPT.format_messages(

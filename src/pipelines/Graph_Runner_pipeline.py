@@ -1,6 +1,8 @@
 from src.utils.abstract_class import Pipeline
 from src.graphs.builder import graph
 from src.models.workflow_models import State
+
+
 class GraphRunnerPipeline(Pipeline):
     def __init__(self):
         self.graph = graph
@@ -12,4 +14,7 @@ class GraphRunnerPipeline(Pipeline):
             file_paths=file_paths
         )
 
-        return await self.graph.ainvoke(state)
+        config={"configurable":{"thread_id":thread_id}}
+        async for s in self.graph.astream(state,config=config):
+            yield s
+

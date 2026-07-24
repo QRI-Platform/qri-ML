@@ -10,3 +10,8 @@ NAMESPACE = None
 PUBLIC_TEMP_DIR = "uploads"
 LOGS_DIR = "logs"
 ARTIFACT_FOLDER = "artifacts"
+
+
+
+# Advace node constants
+NO_OF_LAST_MESSAGES_TO_KEEP=10

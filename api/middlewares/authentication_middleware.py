@@ -1,8 +1,8 @@
 from fastapi import Request, HTTPException
 from src.logger import logger
-async def authenticate_user(request: Request):
+
+async def authenticate_user(request:Request,thread_id: str):
     try:
-        thread_id = request.cookies.get("thread_id")
         if not thread_id:
             raise HTTPException(
                 status_code=401,

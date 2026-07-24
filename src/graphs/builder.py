@@ -10,7 +10,7 @@ from src.nodes.main_nodes import (
 )
 from src.models.workflow_models import State
 
-
+from src.memory import checkpointer
 workflow = StateGraph(state_schema=State)
 
 workflow.add_node("ingestion_node", ingestion_node)
@@ -59,4 +59,4 @@ workflow.add_edge("retreiver_node", "chat_node")
 workflow.add_edge("chat_node", END)
 
 
-graph = workflow.compile()
+graph = workflow.compile(checkpointer=checkpointer)
