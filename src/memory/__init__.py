@@ -1,6 +1,19 @@
-from langgraph.checkpoint.serde.encrypted import EncryptedSerializer
-from langgraph.checkpoint.postgres import PostgresSaver
-from src.config.app_config import app_config
-serde = EncryptedSerializer.from_pycryptodome_aes()
-checkpointer = PostgresSaver.from_conn_string(app_config.postgres_sql_url, serde=serde)
-checkpointer.setup()
+import sys
+from functools import lru_cache
+from langgraph.checkpoint.memory import MemorySaver
+from src.logger import logger
+from src.exception import MyException
+
+
+@lru_cache
+def get_checkpointer() -> MemorySaver:
+    try:
+        logger.debug("Initializing MemorySaver checkpointer singleton")
+        cp = MemorySaver()
+        logger.info("MemorySaver checkpointer initialized")
+        return cp
+    except Exception as e:
+        raise MyException(e, sys)
+
+
+checkpointer = get_checkpointer()

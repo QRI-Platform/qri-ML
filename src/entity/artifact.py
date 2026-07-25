@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+from typing import Any
+
 
 @dataclass
 class DataIngestionArtifact:
-    retreiver:object
+    retriever: Any
