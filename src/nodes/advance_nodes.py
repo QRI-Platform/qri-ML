@@ -3,7 +3,9 @@ import asyncio
 from src.logger import logger
 from src.exception import MyException
 from src.models.workflow_models import State
-from src.core.dependencies import get_llm, get_thread_manager, get_retriever
+from src.llm.llm_loader import get_llm
+from src.retreiver.retreiver import get_retriever
+from db.thread_manager import get_thread_manager
 from src.constants import NO_OF_LAST_MESSAGES_TO_KEEP
 from src.prompt import SUMMARIZER_PROMPT, SUMMARIZER_EXTEND_PROMPT
 from langchain_core.messages import RemoveMessage, HumanMessage

@@ -13,7 +13,7 @@ from src.nodes.main_nodes import (
 )
 from src.nodes.advance_nodes import summerizer, thread_manager_node
 from src.nodes.conditional_nodes import route_entry, route_after_orchastrator
-from src.core.dependencies import get_checkpointer
+from src.memory import get_checkpointer
 
 
 @lru_cache

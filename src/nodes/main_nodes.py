@@ -5,7 +5,8 @@ from src.models.workflow_models import State, QueryGenerationOutput, Orchastrato
 from src.components.data_ingestion import DataIngestion
 from src.entity.config import DataIngestionConfig, RetrieverConfig
 from src.entity.artifact import DataIngestionArtifact
-from src.core.dependencies import get_llm, get_retriever
+from src.llm.llm_loader import get_llm
+from src.retreiver.retreiver import get_retriever
 from langchain_core.messages import SystemMessage
 from src.prompt import QUERY_GENERATION_PROMPT, ORCHESTRATOR_PROMPT, CHAT_PROMPT
 

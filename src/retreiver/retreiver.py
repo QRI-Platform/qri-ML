@@ -10,7 +10,7 @@ from src.config.app_config import get_app_config
 from src.retreiver.pinecone_client import get_pinecone_client
 from src.embeddings.embedding_loader import get_embeddings
 
-
+from src.entity.config import RetrieverConfig
 _verified_indexes = set()
 
 
@@ -111,4 +111,9 @@ class Retriever:
             logger.error("Failed to delete namespace %s", namespace)
             raise MyException(e, sys)
 
+
+
+
+def get_retriever(retriever_config: RetrieverConfig) -> Retriever:
+    return Retriever(retriever_config=retriever_config)
 

@@ -2,7 +2,7 @@ import asyncio
 from src.logger import logger
 from src.constants import DEFAULT_INDEX_NAME
 from src.entity.config import RetrieverConfig
-from src.core.dependencies import get_retriever
+from src.retreiver.retreiver import get_retriever
 
 
 async def delete_thread_data(thread_id: str, delay_seconds: int = 0):
