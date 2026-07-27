@@ -1,4 +1,4 @@
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate,PromptTemplate,MessagesPlaceholder
 
 ORCHESTRATOR_PROMPT = """You are an orchestrator that decides whether a user query requires searching a document database.
 Default to require_db_search = true for any questions asking about documents, resumes, PDFs, names, details, background, facts, summaries, or specific information.
@@ -16,4 +16,18 @@ SUMMARIZER_EXTEND_PROMPT = "Existing conversation summary:\n{summary}\n\nExtend 
 CHAT_PROMPT = ChatPromptTemplate.from_messages([
     ("system", "You are a helpful assistant. Answer the user's question clearly and concisely.{context}"),
     ("human", "{question}"),
+])
+
+
+
+
+SUMMARY_NODE_PROMPT = ChatPromptTemplate.from_messages([
+    (
+        "system",
+        "You are an expert conversation summarizer. "
+        "Summarize the given conversation in at most {no_of_words} words "
+        "while preserving all important context, decisions, user preferences, "
+        "tasks, and ongoing discussions. Do not add any new information."
+    ),
+    MessagesPlaceholder(variable_name="messages"),
 ])

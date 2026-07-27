@@ -10,9 +10,13 @@ from src.nodes.main_nodes import (
     query_generation_node,
     retreiver_node,
     chat_node,
+    summary_node
 )
 from src.nodes.advance_nodes import summerizer, thread_manager_node
-from src.nodes.conditional_nodes import route_entry, route_after_orchastrator
+from src.nodes.conditional_nodes import (route_entry,
+                                         route_after_orchastrator,
+                                         route_summary_node
+                                         )
 from src.memory import get_checkpointer
 
 
@@ -28,7 +32,7 @@ def get_graph():
         workflow.add_node("query_generation_node", query_generation_node)
         workflow.add_node("retreiver_node", retreiver_node)
         workflow.add_node("chat_node", chat_node)
-
+        workflow.add_node("summary_node",summary_node)
         workflow.add_edge(START, "thread_manager_node")
 
         workflow.add_conditional_edges(
@@ -47,12 +51,17 @@ def get_graph():
             route_after_orchastrator,
             {
                 "query_generation_node": "query_generation_node",
-                "chat_node": "chat_node",
+                "chat_node": "summary_node",
             },
         )
 
         workflow.add_edge("query_generation_node", "retreiver_node")
-        workflow.add_edge("retreiver_node", "chat_node")
+        workflow.add_conditional_edges("retreiver_node", route_summary_node,{
+            "summary_node":"summary_node",
+            "chat_node":"chat_node"
+        })
+        workflow.add_edge("summary_node", "chat_node")
+
         workflow.add_edge("chat_node", END)
 
         graph = workflow.compile(checkpointer=get_checkpointer())
