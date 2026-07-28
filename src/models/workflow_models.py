@@ -31,6 +31,7 @@ class State(BaseModel):
     retreived_results: List[Any] = Field(default_factory=list)
     ai_response: Optional[str] = None
     summary: Optional[str] = None
+    summarized_conv: Optional[str] = None
 
 
 # Legacy aliases for backward compatibility

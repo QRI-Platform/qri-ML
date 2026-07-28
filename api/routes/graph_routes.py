@@ -1,6 +1,7 @@
 import sys
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse,JSONResponse
+from fastapi.exceptions import HTTPException
 from src.logger import logger
 from src.exception import MyException
 from api.middlewares.multi_middleware import multer_middleware
@@ -25,7 +26,7 @@ async def stream_chat(message: str, user_id: str, thread_id: str):
         logger.info("stream_chat completed: user=%s thread=%s", user_id, thread_id)
     except Exception as e:
         logger.error("stream_chat error: %s", str(e))
-        raise MyException(e, sys)
+        raise HTTPException(status_code=400,detail={"success": False, "message": str(e),"data":None})
 
 
 @router.post("/ingest")
@@ -41,10 +42,10 @@ async def ingest_vec_data(request: Request, file_path: str = Depends(multer_midd
         ):
             pass
         logger.info("ingest endpoint: completed for thread=%s", request.state.thread_id)
-        return {"success": True, "message": "Data ingested successfully"}
+        return JSONResponse(content={"success": True, "message": "Data ingested successfully","data":None},status_code=200)
     except Exception as e:
         logger.error("ingest endpoint failed: %s", str(e))
-        raise MyException(e, sys)
+        raise HTTPException(status_code=400,detail={"success": False, "message": str(e),"data":None})
 
 
 @router.post("/chat")
@@ -57,17 +58,20 @@ async def run_workflow(request: Request, payload: ChatRequest):
         )
     except Exception as e:
         logger.error("chat endpoint failed: %s", str(e))
-        raise MyException(e, sys)
+        raise HTTPException(status_code=400,detail={"success": False, "message": str(e),"data":None})
 
 
-@router.delete("/delete")
+@router.delete("/pine_cone")
 async def delete_thread_endpoint(request: Request):
     try:
         logger.info("delete endpoint: user=%s thread=%s", request.state.user_id, request.state.thread_id)
         get_thread_manager().remove_thread(request.state.thread_id)
         await _delete_pinecone_namespace(request.state.thread_id)
         logger.info("delete endpoint: completed for thread=%s", request.state.thread_id)
-        return {"success": True, "message": "Thread deleted successfully"}
+        return JSONResponse(content={"success": True, "message": "Thread deleted successfully","data":None},status_code=200)
     except Exception as e:
         logger.error("delete endpoint failed: %s", str(e))
-        raise MyException(e, sys)
+        raise HTTPException(status_code=400,detail={"success": False, "message": str(e),"data":None})
+    
+
+

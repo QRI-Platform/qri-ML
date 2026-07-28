@@ -50,7 +50,7 @@ async def query_generation_node(state: State) -> dict:
     try:
         logger.info("query_generation_node started")
         llm = get_llm()
-        structured_llm = llm.with_structured_output(QueryGenerationOutput)
+        structured_llm = llm.with_structured_output(QueryGenerationOutput, method="json_mode")
         messages = [SystemMessage(content=QUERY_GENERATION_PROMPT), *state.messages]
         result = structured_llm.invoke(messages)
         logger.info("Generated %d queries", len(result.queries))
@@ -80,6 +80,17 @@ async def retreiver_node(state: State):
 async def chat_node(state: State):
     try:
         logger.info("chat_node started, messages_count=%d", len(state.messages))
+        final_messages = state.messages
+        summarized = getattr(state, "summarized_conv", None) or state.summary
+        if summarized:
+            final_messages = (
+                [SystemMessage(content=summarized)]
+                + state.messages[-NO_OF_LAST_MESSAGES_TO_KEEP:]
+            )
+            logger.info(
+                "Conversation compressed successfully. Current message count: %d",
+                len(final_messages),
+            )
         llm = get_llm()
         context = (
             "\n\n".join([doc.page_content for doc in state.retreived_results])
@@ -88,10 +99,10 @@ async def chat_node(state: State):
         system_content = "You are a helpful assistant. Answer the user's question clearly and concisely."
         if context:
             system_content += f"\n\nContext:\n{context}"
-        if state.summary:
+        if state.summary and not state.summarized_conv:
             system_content += f"\n\nConversation summary so far:\n{state.summary}"
 
-        messages = [SystemMessage(content=system_content)] + state.messages
+        messages = [SystemMessage(content=system_content)] + final_messages
 
         response = await llm.ainvoke(messages)
         logger.info("chat_node completed, response_length=%d", len(response.content))
@@ -99,8 +110,6 @@ async def chat_node(state: State):
     except Exception as e:
         logger.error("chat_node failed: %s", str(e))
         raise MyException(e, sys)
-    
-
 
 
 async def summary_node(state: State):
@@ -114,7 +123,7 @@ async def summary_node(state: State):
                 len(state.messages),
                 NO_OF_LAST_MESSAGES_TO_KEEP,
             )
-            return state
+            return {}
 
         llm = get_llm()
         logger.info("LLM initialized successfully.")
@@ -141,18 +150,9 @@ async def summary_node(state: State):
         logger.info("Summary generated successfully.")
         logger.debug("Summary: %s", summary_text)
 
-        state.messages = (
-            [SystemMessage(content=summary_text)]
-            + state.messages[-NO_OF_LAST_MESSAGES_TO_KEEP:]
-        )
-
-        logger.info(
-            "Conversation compressed successfully. Current message count: %d",
-            len(state.messages),
-        )
         logger.info("=" * 50)
 
-        return state
+        return {"summarized_conv": summary_text}
 
     except Exception as e:
         logger.exception("Error occurred in summary node.")
