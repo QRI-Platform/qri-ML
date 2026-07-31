@@ -1,10 +1,12 @@
 import sys
-from src.logger import logger
-from src.exception import MyException
-from src.utils.abstract_class import Pipeline
-from src.graphs.builder import get_graph
-from src.models.workflow_models import State
+from functools import lru_cache
 from langchain_core.messages import HumanMessage
+
+from src.core.logger import logger
+from src.core.exceptions import MyException
+from src.domain.enums import Pipeline
+from src.graphs.builder import get_graph
+from src.domain.state import State
 
 
 class GraphRunnerPipeline(Pipeline):
@@ -17,14 +19,13 @@ class GraphRunnerPipeline(Pipeline):
             logger.info("Pipeline.initiate called: user=%s thread=%s files=%d message=%s",
                         user_id, thread_id, len(file_paths or []), bool(message))
             state = State(
-                user_id=user_id,
-                thread_id=thread_id,
                 file_paths=file_paths or [],
             )
+
             if message:
                 state.messages.append(HumanMessage(content=message))
 
-            config = {"configurable": {"thread_id": thread_id}}
+            config = {"configurable": {"thread_id": thread_id, "user_id": user_id}}
             logger.debug("Streaming graph events with config=%s", config)
 
             async for chunk in self.graph.astream_events(state, config=config, version="v2"):
@@ -33,3 +34,9 @@ class GraphRunnerPipeline(Pipeline):
         except Exception as e:
             logger.error("Pipeline.initiate failed: %s", str(e))
             raise MyException(e, sys)
+
+    
+
+@lru_cache
+def get_graph_runner_pipeline() -> GraphRunnerPipeline:
+    return GraphRunnerPipeline()

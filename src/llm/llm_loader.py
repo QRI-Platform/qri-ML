@@ -1,10 +1,10 @@
 import sys
 from functools import lru_cache
 from langchain_groq import ChatGroq
-from src.config.app_config import get_app_config
-from src.constants import LLM_MODEL_NAME
-from src.logger import logger
-from src.exception import MyException
+from src.core.config import get_app_config
+from src.core.constants import LLM_MODEL_NAME
+from src.core.logger import logger
+from src.core.exceptions import MyException
 
 
 @lru_cache

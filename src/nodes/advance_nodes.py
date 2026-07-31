@@ -1,20 +1,20 @@
 import sys
-import asyncio
-from src.logger import logger
-from src.exception import MyException
-from src.models.workflow_models import State
+from src.core.logger import logger
+from src.core.exceptions import MyException
+from src.domain.state import State
 from src.llm.llm_loader import get_llm
-from src.retreiver.retreiver import get_retriever
-from db.thread_manager import get_thread_manager
-from src.constants import NO_OF_LAST_MESSAGES_TO_KEEP
-from src.prompt import SUMMARIZER_PROMPT, SUMMARIZER_EXTEND_PROMPT
+from src.retrievers.pinecone_retriever import get_retriever
+from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, DEFAULT_INDEX_NAME
+from src.prompts.templates import SUMMARIZER_PROMPT, SUMMARIZER_EXTEND_PROMPT
 from langchain_core.messages import RemoveMessage, HumanMessage
-from src.constants import DEFAULT_INDEX_NAME
-from src.entity.config import RetrieverConfig
+from src.domain.config_entities import RetrieverConfig
+from langchain_core.runnables import RunnableConfig
 
-async def summerizer(state: State):
+
+async def summerizer(state: State, config: RunnableConfig):
     try:
-        logger.info("summerizer node started for thread=%s", state.thread_id)
+        thread_id = config["configurable"]["thread_id"]
+        logger.info("summerizer node started for thread=%s", thread_id)
         llm = get_llm()
         summary = state.summary or ""
         messages = state.messages
@@ -39,22 +39,9 @@ async def summerizer(state: State):
         raise MyException(e, sys)
 
 
-async def thread_manager_node(state: State) -> dict:
+async def thread_manager_node(state: State, config: RunnableConfig) -> dict:
     try:
-        logger.info("thread_manager_node started for user=%s thread=%s", state.user_id, state.thread_id)
-        tm = get_thread_manager()
-
-        if tm.thread_exists(thread_id=state.thread_id):
-            logger.info("thread=%s already registered — skipping registration", state.thread_id)
-            return {}
-
-        evicted_thread_id = tm.register_thread(user_id=state.user_id, thread_id=state.thread_id)
-        logger.info("thread=%s registered for user=%s", state.thread_id, state.user_id)
-
-        if evicted_thread_id:
-            logger.info("Evicted oldest thread=%s — scheduling async cleanup", evicted_thread_id)
-            asyncio.create_task(_cleanup_evicted_thread(evicted_thread_id))
-
+        pass
         return {}
     except Exception as e:
         logger.error("thread_manager_node failed: %s", str(e))
@@ -70,4 +57,3 @@ async def _cleanup_evicted_thread(thread_id: str):
         logger.info("Evicted thread=%s cleanup complete", thread_id)
     except Exception as e:
         logger.error("Cleanup failed for evicted thread=%s: %s", thread_id, str(e))
-

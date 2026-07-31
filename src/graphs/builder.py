@@ -1,23 +1,26 @@
 import sys
 from functools import lru_cache
 from langgraph.graph import StateGraph, START, END
-from src.logger import logger
-from src.exception import MyException
-from src.models.workflow_models import State
+from src.core.logger import logger
+from src.core.exceptions import MyException
+from src.domain.state import State
 from src.nodes.main_nodes import (
     ingestion_node,
     orchastrator_node,
     query_generation_node,
     retreiver_node,
     chat_node,
-    summary_node
+    summary_node,
 )
 from src.nodes.advance_nodes import summerizer, thread_manager_node
-from src.nodes.conditional_nodes import (route_entry,
-                                         route_after_orchastrator,
-                                         route_summary_node
-                                         )
-from src.memory import get_checkpointer
+from src.nodes.conditional_nodes import (
+    route_entry,
+    route_after_orchastrator,
+    route_summary_node,
+)
+from src.core.memory import get_checkpointer, get_store
+from langgraph.prebuilt import ToolNode, tools_condition
+from src.tools.web_search import solver
 
 
 @lru_cache
@@ -32,7 +35,8 @@ def get_graph():
         workflow.add_node("query_generation_node", query_generation_node)
         workflow.add_node("retreiver_node", retreiver_node)
         workflow.add_node("chat_node", chat_node)
-        workflow.add_node("summary_node",summary_node)
+        workflow.add_node("summary_node", summary_node)
+        workflow.add_node("tool_node", ToolNode([solver]))
         workflow.add_edge(START, "thread_manager_node")
 
         workflow.add_conditional_edges(
@@ -56,17 +60,20 @@ def get_graph():
         )
 
         workflow.add_edge("query_generation_node", "retreiver_node")
-        workflow.add_conditional_edges("retreiver_node", route_summary_node,{
-            "summary_node":"summary_node",
-            "chat_node":"chat_node"
+        workflow.add_conditional_edges("retreiver_node", route_summary_node, {
+            "summary_node": "summary_node",
+            "chat_node": "chat_node"
         })
         workflow.add_edge("summary_node", "chat_node")
 
-        workflow.add_edge("chat_node", END)
+        workflow.add_conditional_edges("chat_node", tools_condition, {
+            "tools": "tool_node",
+            END: END
+        })
+        workflow.add_edge("tool_node", "chat_node")
 
-        graph = workflow.compile(checkpointer=get_checkpointer())
+        graph = workflow.compile(checkpointer=get_checkpointer(), store=get_store())
         logger.info("LangGraph workflow compiled successfully")
-
 
         try:
             graph.get_graph().draw_mermaid_png(output_file_path="graph_visualization.png")

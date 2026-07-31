@@ -1,31 +1,37 @@
 import sys
-from src.logger import logger
-from src.exception import MyException
-from src.models.workflow_models import State, QueryGenerationOutput, OrchastratorOutput
-from src.components.data_ingestion import DataIngestion
-from src.entity.config import DataIngestionConfig, RetrieverConfig
-from src.entity.artifact import DataIngestionArtifact
+from src.core.logger import logger
+from src.core.exceptions import MyException
+from src.services.data_ingestion_service import DataIngestion
+from src.domain.config_entities import DataIngestionConfig, RetrieverConfig
+from src.domain.artifacts import DataIngestionArtifact
 from src.llm.llm_loader import get_llm
-from src.retreiver.retreiver import get_retriever
-from langchain_core.messages import SystemMessage
-from src.prompt import QUERY_GENERATION_PROMPT, ORCHESTRATOR_PROMPT, CHAT_PROMPT, SUMMARY_NODE_PROMPT
-from src.constants import NO_OF_LAST_MESSAGES_TO_KEEP, LENGTH_OF_SUMMARY_GENERATED
+from src.retrievers.pinecone_retriever import get_retriever
+from src.core.memory import get_store
+from langchain_core.messages import AIMessage, SystemMessage
+from langchain_core.runnables import RunnableConfig
+from langgraph.store.base import BaseStore
+from src.prompts.templates import QUERY_GENERATION_PROMPT, ORCHESTRATOR_PROMPT, CHAT_PROMPT, SUMMARY_NODE_PROMPT
+from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, LENGTH_OF_SUMMARY_GENERATED, MINIMUM_LENGTH_OF_LONG_TERM_MEMORY
+from src.domain.state import State, QueryGenerationOutput, OrchastratorOutput, ChatOutput
+from src.tools.web_search import solver
 
-async def ingestion_node(state: State):
+
+async def ingestion_node(state: State, config: RunnableConfig):
     try:
-        logger.info("ingestion_node started for thread=%s, files=%d", state.thread_id, len(state.file_paths))
+        thread_id = config["configurable"]["thread_id"]
+        logger.info("ingestion_node started for thread=%s, files=%d", thread_id, len(state.file_paths))
         data_ingestion_config = DataIngestionConfig(
             files_path=state.file_paths,
-            namespace=state.thread_id,
+            namespace=thread_id,
         )
-        retriever_config = RetrieverConfig(namespace=state.thread_id)
+        retriever_config = RetrieverConfig(namespace=thread_id)
         retriever = get_retriever(retriever_config=retriever_config)
         data_ingestion = DataIngestion(
             data_ingestion_config=data_ingestion_config,
             retriever=retriever,
         )
         await data_ingestion.ingest()
-        logger.info("ingestion_node completed for thread=%s", state.thread_id)
+        logger.info("ingestion_node completed for thread=%s", thread_id)
         return {}
     except Exception as e:
         logger.error("ingestion_node failed: %s", str(e))
@@ -60,10 +66,11 @@ async def query_generation_node(state: State) -> dict:
         raise MyException(e, sys)
 
 
-async def retreiver_node(state: State):
+async def retreiver_node(state: State, config: RunnableConfig):
     try:
+        thread_id = config["configurable"]["thread_id"]
         logger.info("retreiver_node started, queries=%d", len(state.queries))
-        retriever_config = RetrieverConfig(namespace=state.thread_id)
+        retriever_config = RetrieverConfig(namespace=thread_id)
         retriever = get_retriever(retriever_config=retriever_config)
         vector_store = await retriever.create_retriever()
         results = []
@@ -77,36 +84,46 @@ async def retreiver_node(state: State):
         raise MyException(e, sys)
 
 
-async def chat_node(state: State):
+async def chat_node(state: State, config: RunnableConfig, store: BaseStore):
     try:
-        logger.info("chat_node started, messages_count=%d", len(state.messages))
+        user_id = config["configurable"]["user_id"]
+        logger.info("chat_node started for user=%s, messages_count=%d", user_id, len(state.messages))
+
+        lsm = store.search(("user", str(user_id), "details"))
+        if lsm:
+            user_memories = "\n".join([f"- key: {item.key}, value: {item.value.get('data')}" for item in lsm if item.value])
+        else:
+            user_memories = "None"
+
+        context = "\n\n".join([doc.page_content for doc in state.retreived_results]) if state.retreived_results else "None"
+        summary = state.summarized_conv or state.summary or "None"
+
         final_messages = state.messages
-        summarized = getattr(state, "summarized_conv", None) or state.summary
-        if summarized:
-            final_messages = (
-                [SystemMessage(content=summarized)]
-                + state.messages[-NO_OF_LAST_MESSAGES_TO_KEEP:]
-            )
-            logger.info(
-                "Conversation compressed successfully. Current message count: %d",
-                len(final_messages),
-            )
+        if summary != "None":
+            final_messages = state.messages[-NO_OF_LAST_MESSAGES_TO_KEEP:]
+
         llm = get_llm()
-        context = (
-            "\n\n".join([doc.page_content for doc in state.retreived_results])
-            if state.retreived_results else ""
+        prompt_messages = CHAT_PROMPT.format_messages(
+            user_memories=user_memories,
+            context=context,
+            summary=summary,
+            messages=final_messages
         )
-        system_content = "You are a helpful assistant. Answer the user's question clearly and concisely."
-        if context:
-            system_content += f"\n\nContext:\n{context}"
-        if state.summary and not state.summarized_conv:
-            system_content += f"\n\nConversation summary so far:\n{state.summary}"
 
-        messages = [SystemMessage(content=system_content)] + final_messages
+        structured_llm = llm.with_structured_output(ChatOutput, method="json_mode")
+        chat_res: ChatOutput = await structured_llm.ainvoke(prompt_messages)
 
-        response = await llm.ainvoke(messages)
-        logger.info("chat_node completed, response_length=%d", len(response.content))
-        return {"messages": [response], "ai_response": response.content}
+        if chat_res.memory_key and chat_res.memory_value and chat_res.memory_key.lower() not in ["null", "none"]:
+            key_name = chat_res.memory_key.strip().lower().replace(" ", "_")
+            logger.info("Storing long-term memory for user %s: %s = %s", user_id, key_name, chat_res.memory_value)
+            store.put(
+                namespace=("user", str(user_id), "details"),
+                key=key_name,
+                value={"data": chat_res.memory_value.strip()}
+            )
+
+        response = AIMessage(content=chat_res.response)
+        return {"messages": [response], "ai_response": chat_res.response}
     except Exception as e:
         logger.error("chat_node failed: %s", str(e))
         raise MyException(e, sys)
@@ -157,4 +174,3 @@ async def summary_node(state: State):
     except Exception as e:
         logger.exception("Error occurred in summary node.")
         raise MyException(e, sys)
-

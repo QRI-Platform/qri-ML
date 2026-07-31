@@ -1,5 +1,5 @@
 from fastapi import Request, HTTPException
-from src.logger import logger
+from src.core.logger import logger
 
 
 async def authenticate_user(request: Request, user_id: str | None = None, thread_id: str | None = None):
@@ -22,4 +22,3 @@ async def authenticate_user(request: Request, user_id: str | None = None, thread
             status_code=401,
             detail={"success": False, "message": "Authentication failed", "data": None}
         )
-

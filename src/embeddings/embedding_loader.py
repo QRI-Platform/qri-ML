@@ -1,9 +1,9 @@
 import sys
 from functools import lru_cache
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from src.constants import EMBEDDING_MODEL_NAME
-from src.logger import logger
-from src.exception import MyException
+from src.core.constants import EMBEDDING_MODEL_NAME
+from src.core.logger import logger
+from src.core.exceptions import MyException
 
 
 @lru_cache

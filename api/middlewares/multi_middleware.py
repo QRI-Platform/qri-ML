@@ -2,9 +2,9 @@ import os
 import shutil
 import sys
 from fastapi import Request, UploadFile
-from src.constants import PUBLIC_TEMP_DIR
-from src.exception import MyException
-from src.logger import logger
+from src.core.constants import PUBLIC_TEMP_DIR
+from src.core.exceptions import MyException
+from src.core.logger import logger
 
 os.makedirs(PUBLIC_TEMP_DIR, exist_ok=True)
 
@@ -35,8 +35,7 @@ async def multer_middleware(
             shutil.copyfileobj(file.file, f)
 
         logger.info("multer_middleware: file saved successfully at %s", file_path)
-        
-        # Pass file path to route/endpoint
+
         yield file_path
 
     except Exception as e:
@@ -44,7 +43,6 @@ async def multer_middleware(
         raise MyException(e, sys)
 
     finally:
-        # Clean up file/folder after request processing is completed
         if file_path and os.path.exists(file_path):
             try:
                 os.remove(file_path)
