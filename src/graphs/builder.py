@@ -55,7 +55,8 @@ def get_graph():
             route_after_orchastrator,
             {
                 "query_generation_node": "query_generation_node",
-                "chat_node": "summary_node",
+                "summary_node": "summary_node",
+                "chat_node": "chat_node",
             },
         )
 
