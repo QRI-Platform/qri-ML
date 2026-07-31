@@ -1,0 +1,56 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# IDEs & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Application logs, uploads & runtime data
+logs/
+*.log
+uploads/
+artifacts/
+temp/
+tmp/
+
+# SQLite local database files
+data/*.db
+*.sqlite3
+
+# Secrets & Environment variables
+.env
+.env.*
+!.env.example
+
+# Jupyter notebooks & Testing caches
+notebook/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Docker build artifacts
+Dockerfile
+docker-compose*.yml
