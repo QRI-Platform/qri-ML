@@ -17,6 +17,7 @@ def route_after_orchastrator(state: State) -> str:
 
 
 def route_summary_node(state: State) -> str:
+    
     if len(state.messages) > NO_OF_LAST_MESSAGES_TO_KEEP:
         return "summary_node"
     return "chat_node"

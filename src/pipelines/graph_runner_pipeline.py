@@ -7,6 +7,7 @@ from src.core.exceptions import MyException
 from src.domain.enums import Pipeline
 from src.graphs.builder import get_graph
 from src.domain.state import State
+from langsmith import traceable
 
 
 class GraphRunnerPipeline(Pipeline):
@@ -14,6 +15,7 @@ class GraphRunnerPipeline(Pipeline):
         self.graph = get_graph()
         logger.info("GraphRunnerPipeline initialized")
 
+    @traceable(name="GraphRunnerPipeline.initiate", run_type="chain")
     async def initiate(self, user_id: str, thread_id: str, file_paths: list = None, message: str = None):
         try:
             logger.info("Pipeline.initiate called: user=%s thread=%s files=%d message=%s",

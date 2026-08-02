@@ -9,6 +9,7 @@ from src.domain.config_entities import DataIngestionConfig
 from src.domain.artifacts import DataIngestionArtifact
 from src.core.logger import logger
 from src.core.exceptions import MyException
+from langsmith import traceable
 
 
 class DataIngestion:
@@ -17,6 +18,7 @@ class DataIngestion:
         self.retriever = retriever
         logger.debug("DataIngestion initialized for %d files", len(data_ingestion_config.files_path))
 
+    @traceable(name="docling_file_loader", run_type="parser")
     async def get_loader(self) -> List[DoclingLoader]:
         try:
             logger.info("Initializing loaders for %d input files", len(self.data_ingestion_config.files_path))
@@ -28,6 +30,7 @@ class DataIngestion:
             raise MyException(e, sys)
 
     @staticmethod
+    @traceable(name="document_chunker", run_type="chain")
     async def chunk_docs(documents: List[Document], chunk_size: int, chunk_overlap: int) -> List[Document]:
         try:
             logger.info("Splitting %d documents into chunks (size=%d, overlap=%d)", len(documents), chunk_size, chunk_overlap)
@@ -39,6 +42,7 @@ class DataIngestion:
             logger.error("Error chunking documents")
             raise MyException(e, sys)
 
+    @traceable(name="save_to_vector_db", run_type="chain")
     async def save_to_db(self, documents: List[Document]):
         try:
             logger.info("Saving %d documents to vector store", len(documents))
@@ -49,6 +53,7 @@ class DataIngestion:
             logger.error("Error saving documents to vector store")
             raise MyException(e, sys)
 
+    @traceable(name="data_ingestion_pipeline", run_type="chain")
     async def ingest(self) -> DataIngestionArtifact:
         try:
             logger.info("Starting data ingestion pipeline")

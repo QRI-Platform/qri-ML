@@ -5,6 +5,8 @@ from src.domain.config_entities import RetrieverConfig
 from src.retrievers.pinecone_retriever import get_retriever
 from src.core.memory import get_checkpointer, get_store
 from src.graphs.builder import get_graph
+from langsmith import traceable
+
 
 async def delete_thread_data(thread_id: str, delay_seconds: int = 0):
     if delay_seconds > 0:
@@ -24,6 +26,7 @@ async def delete_pinecone_namespace(thread_id: str):
         logger.error("Failed to delete Pinecone namespace %s: %s", thread_id, e)
 
 
+@traceable(name="load_conversation", run_type="chain")
 async def load_conversation(thread_id: str, user_id: str):
     try:
         cp = get_checkpointer()
@@ -54,6 +57,7 @@ async def load_conversation(thread_id: str, user_id: str):
         return []
 
 
+@traceable(name="delete_user_conversation", run_type="chain")
 async def delete_user_conversation(thread_id: str, user_id: str):
     try:
         graph = get_graph()
@@ -64,6 +68,7 @@ async def delete_user_conversation(thread_id: str, user_id: str):
         return False
 
 
+@traceable(name="get_user_long_term_memory", run_type="chain")
 async def get_user_long_term_memory(user_id: str):
     try:
         store = get_store()

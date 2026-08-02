@@ -34,8 +34,6 @@ class State(BaseModel):
     queries: List[str] = Field(default_factory=list)
     retreived_results: List[Any] = Field(default_factory=list)
     ai_response: Optional[str] = None
-    summary: Optional[str] = None
-    summarized_conv: Optional[str] = None
 
 
 Orchastrator_output = OrchastratorOutput

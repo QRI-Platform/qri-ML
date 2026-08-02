@@ -16,13 +16,16 @@ PUBLIC_TEMP_DIR: str = "uploads"
 LOGS_DIR: str = "logs"
 ARTIFACT_FOLDER: str = "artifacts"
 
-SQLITE_DB_PATH: str = "data/app.db"
+SQLITE_DB_PATH: str = "data/app.db" # no use right now
 
-MAX_THREADS_PER_USER: int = 2
+MAX_THREADS_PER_USER: int = 2 # no use right now
 CONTENT_TTL_MINUTES: int = 60
 
 NO_OF_LAST_MESSAGES_TO_KEEP: int = 6
 
-LENGTH_OF_SUMMARY_GENERATED: int = 100
+LENGTH_OF_SUMMARY_GENERATED: int = 100 # in words
 
 MINIMUM_LENGTH_OF_LONG_TERM_MEMORY: int = 5
+
+
+MAXIMUM_CONNECTION_POOL_SIZE: int = 20
