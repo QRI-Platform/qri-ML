@@ -23,4 +23,5 @@ dependencies = [
     "python-multipart>=0.0.32",
     "uvicorn>=0.52.1",
     "opencv-python-headless>=5.0.0.93",
+    "langchain-huggingface>=1.2.2",
 ]
