@@ -19,7 +19,7 @@ from src.nodes.conditional_nodes import (
 )
 from src.core.memory import get_checkpointer, get_store
 from langgraph.prebuilt import ToolNode, tools_condition
-from src.tools.web_search import solver
+from src.tools.solver_tool import solver
 
 
 @lru_cache
