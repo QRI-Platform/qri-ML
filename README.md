@@ -4,9 +4,17 @@ An industrial-grade, stateful Multi-Tenant RAG (Retrieval-Augmented Generation) 
 
 ---
 
-## Industrial Architecture & Design Patterns
+## LangGraph Workflow Visualization
 
-This codebase follows strict Clean Layered Architecture and Dependency Injection (DI) principles for high-performance agentic systems:
+The core agentic workflow is orchestrated via **LangGraph**, enabling dynamic query classification, vector database retrieval, token-bounded conversation summarization, math expression solving, and persistent long-term memory extraction.
+
+![LangGraph Workflow Visualization](graph_visualization.png)
+
+---
+
+## Architectural Layer Graph
+
+This codebase follows strict Clean Layered Architecture and Dependency Injection (DI) principles:
 
 1. **Central Dependency Injection Hub (`src/core/dependencies.py`)**:
    - Infrastructure singletons (`AppConfig`, `ChatGroq`, `HuggingFaceEmbeddings`, `Pinecone`, `MemorySaver`, `ThreadManager`, `Retriever`) are managed via `@lru_cache` factories.
@@ -14,20 +22,16 @@ This codebase follows strict Clean Layered Architecture and Dependency Injection
 
 2. **Boot-Time Server Warmup (`warmup_dependencies()`)**:
    - During FastAPI startup (`lifespan`), `warmup_dependencies()` pre-loads heavy singletons (HuggingFace weights, Pinecone client, LLM connection pool, and SQLite database) before accepting HTTP traffic.
-   - Eliminates cold-start latency for `/chat` streaming and `/ingest` endpoints.
 
 3. **Multi-Tenant State & Thread Eviction**:
    - User sessions are isolated via `thread_id` namespaces in Pinecone and `MemorySaver` checkpointer memory.
    - SQLite enforces user-thread mapping and thread limits (`MAX_THREADS_PER_USER`). When exceeded, the oldest thread graph state and vector namespace are automatically purged asynchronously.
 
-4. **Zero Code Comments & Clean Code Enforcement**:
-   - Python code strictly adheres to clean naming, type annotations, and explicit layered control flow without inline comments.
-
----
-
-## Architectural Layer Graph
-
-![LangGraph Workflow Visualization](graph_visualization.png)
+4. **Optimized LLM System Prompts (`src/prompts/templates.py`)**:
+   - High-precision intent classification (`ORCHESTRATOR_PROMPT`).
+   - Coreference resolution and multi-query vector expansion (`QUERY_GENERATION_PROMPT`).
+   - Token-bounded lossless history compression (`SUMMARIZER_PROMPT`).
+   - Grounded RAG synthesis with durable user memory extraction (`CHAT_PROMPT`).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -47,22 +51,22 @@ This codebase follows strict Clean Layered Architecture and Dependency Injection
 └────────────────────────────────────────┬────────────────────────────────────────┘
                                          │
 ┌────────────────────────────────────────▼────────────────────────────────────────┐
-│  LAYER 4 — Workflow Graph & Nodes (`src/graphs/`, `src/nodes/`, `src/prompt/`)   │
+│  LAYER 4 — Workflow Graph & Nodes (`src/graphs/`, `src/nodes/`, `src/prompts/`) │
 │                                                                                 │
 │   src/graphs/builder.py         StateGraph compiler & checkpointer attachment   │
 │   src/nodes/main_nodes.py       ingestion, orchestrator, query_gen, retriever   │
 │   src/nodes/advance_nodes.py    thread_manager, summarizer, async cleanup       │
 │   src/nodes/conditional_nodes.py Pure state routing functions                     │
-│   src/prompt/__init__.py        LLM system prompt registry                      │
+│   src/prompts/templates.py      Optimized LLM system prompt templates           │
 └────────────────────────────────────────┬────────────────────────────────────────┘
                                          │
 ┌────────────────────────────────────────▼────────────────────────────────────────┐
-│  LAYER 3 — Domain Components (`src/components/`, `src/retriever/`, `src/llm/`)  │
+│  LAYER 3 — Domain Components (`src/services/`, `src/retrievers/`, `src/llm/`)  │
 │                                                                                 │
 │   src/llm/llm_loader.py              ChatGroq factory                           │
-│   src/memory/__init__.py             MemorySaver checkpoint manager             │
-│   src/retreiver/retreiver.py         Pinecone vector CRUD operations             │
-│   src/components/data_ingestion.py   DoclingLoader → chunker → vector store     │
+│   src/core/memory.py                 MemorySaver & BaseStore managers           │
+│   src/retrievers/pinecone_retriever  Pinecone vector CRUD operations             │
+│   src/services/data_ingestion_service DoclingLoader → chunker → vector store    │
 └────────────────────────────────────────┬────────────────────────────────────────┘
                                          │
 ┌────────────────────────────────────────▼────────────────────────────────────────┐
@@ -80,19 +84,19 @@ This codebase follows strict Clean Layered Architecture and Dependency Injection
                    │                                     │
 ┌──────────────────▼──────────┐       ┌──────────────────▼────────────────────────┐
 │  LAYER 6 — Database (`db/`) │       │  LAYER 1 — Entities & State Schemas       │
-│                             │       │            (`src/entity/`, `src/models/`) │
+│                             │       │            (`src/domain/`)                │
 │  thread_manager.py          │       │                                           │
-│  SQLite CRUD for threads.   │       │  entity/config.py   RetrieverConfig       │
-│  Purges checkpointer state  │       │  entity/artifact.py IngestionArtifact     │
-│  on eviction or deletion.   │       │  models/workflow.py LangGraph State       │
+│  SQLite CRUD for threads.   │       │  domain/config_entities RetrieverConfig   │
+│  Purges checkpointer state  │       │  domain/artifacts DataIngestionArtifact   │
+│  on eviction or deletion.   │       │  domain/state LangGraph State & Output    │
 └─────────────────────────────┘       └───────────────────────────────────────────┘
                    │
 ┌──────────────────▼──────────────────────────────────────────────────────────────┐
-│  LAYER 0 — Core Utilities (`src/constants/`, `src/logger/`, `src/exception/`)    │
+│  LAYER 0 — Core Utilities (`src/core/constants.py`, `src/core/logger.py`)        │
 │                                                                                 │
-│  constants/__init__.py   System config constants & defaults                     │
-│  logger/__init__.py      Rotating file logger ('app')                           │
-│  exception/__init__.py   Trace-enhanced MyException error wrapper               │
+│  core/constants.py    System config constants & defaults                        │
+│  core/logger.py       Rotating file logger ('app')                              │
+│  core/exceptions.py   Trace-enhanced MyException error wrapper                  │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -136,29 +140,6 @@ graph TD
     EventStream --> Client
 ```
 
-### Async Thread Eviction & Lifecycle Management Flow
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant User as User Request
-    participant TM as ThreadManager Node
-    participant DB as SQLite DB (app.db)
-    participant CP as Checkpointer (MemorySaver)
-    participant PC as Pinecone Vector Store
-
-    User->>TM: Request (user_id, thread_id)
-    TM->>DB: Check active thread count for user
-    alt Count >= MAX_THREADS_PER_USER
-        DB->>TM: Return oldest thread_id for eviction
-        TM->>DB: DELETE FROM user_threads WHERE thread_id=oldest
-        TM->>CP: delete_thread(oldest_thread_id)
-        TM->>PC: Async Purge Namespace (oldest_thread_id)
-    end
-    TM->>DB: INSERT user_id, new_thread_id
-    TM-->>User: Proceed with workflow execution
-```
-
 ---
 
 ## Directory Layout
@@ -166,6 +147,8 @@ sequenceDiagram
 ```
 .
 ├── main.py                               Uvicorn web server entry point
+├── Dockerfile                            Docker deployment configuration
+├── graph_visualization.png               LangGraph execution visualizer
 │
 ├── api/
 │   ├── main.py                           FastAPI application boot & lifespan warmup
@@ -174,8 +157,6 @@ sequenceDiagram
 │   ├── middlewares/
 │   │   ├── authentication_middleware.py  User & thread ID parameter authentication
 │   │   └── multi_middleware.py           Multipart form upload processor
-│   ├── helper/
-│   │   └── graph_helper.py               Async thread cleanup helper
 │   └── models/
 │       └── chat_model.py                 ChatRequest Pydantic payload model
 │
@@ -184,37 +165,35 @@ sequenceDiagram
 │   └── thread_manager.py                 SQLite thread persistence & eviction logic
 │
 ├── src/
-│   ├── constants/__init__.py             System constants and threshold defaults
-│   ├── logger/__init__.py                Rotating file logging configuration
-│   ├── exception/__init__.py             Custom exception trace decorator
-│   │
-│   ├── config/
-│   │   └── app_config.py                 Pydantic Settings env loader (.env)
-│   │
-│   ├── entity/
-│   │   ├── config.py                     RetrieverConfig & DataIngestionConfig
-│   │   └── artifact.py                   DataIngestionArtifact wrapper
-│   │
-│   ├── models/
-│   │   └── workflow_models.py            LangGraph state schema & node output models
-│   │
 │   ├── core/
+│   │   ├── constants.py                  System constants and threshold defaults
+│   │   ├── logger.py                     Rotating file logging configuration
+│   │   ├── exceptions.py                 Custom exception trace decorator
+│   │   ├── memory.py                     MemorySaver & BaseStore memory providers
 │   │   └── dependencies.py              ★ DI Hub: Singleton registry & boot warmup
+│   │
+│   ├── domain/
+│   │   ├── config_entities.py           RetrieverConfig & DataIngestionConfig
+│   │   ├── artifacts.py                 DataIngestionArtifact wrapper
+│   │   ├── enums.py                     Pipeline abstractions
+│   │   └── state.py                     LangGraph State & structured LLM output schemas
 │   │
 │   ├── llm/
 │   │   └── llm_loader.py                 ChatGroq singleton factory
 │   │
-│   ├── memory/
-│   │   └── __init__.py                   MemorySaver checkpointer singleton
-│   │
-│   ├── retreiver/
+│   ├── retrievers/
 │   │   ├── pinecone_client.py            Pinecone client singleton
-│   │   └── retreiver.py                  Pinecone vector store CRUD manager
+│   │   └── pinecone_retriever.py         Pinecone vector store CRUD manager
 │   │
-│   ├── components/
-│   │   └── data_ingestion.py             Document processing pipeline
+│   ├── services/
+│   │   ├── conversation_service.py       Conversation history management
+│   │   └── data_ingestion_service.py     Document processing pipeline
 │   │
-│   ├── prompt/__init__.py                Prompt template registry
+│   ├── prompts/
+│   │   └── templates.py                  ★ Optimized LLM prompt templates
+│   │
+│   ├── tools/
+│   │   └── solver_tool.py                Numexpr mathematical expression solver tool
 │   │
 │   ├── nodes/
 │   │   ├── conditional_nodes.py          Pure conditional routing logic
@@ -224,12 +203,8 @@ sequenceDiagram
 │   ├── graphs/
 │   │   └── builder.py                    StateGraph construction & compilation
 │   │
-│   ├── pipelines/
-│   │   ├── __init__.py                   Pipeline factory
-│   │   └── graph_runner_pipeline.py      Graph execution pipeline wrapper
-│   │
-│   └── utils/
-│       └── abstract_class.py             Abstract base class contracts
+│   └── pipelines/
+│       └── graph_runner_pipeline.py      Graph execution pipeline wrapper
 │
 └── data/
     └── app.db                            SQLite database storage
@@ -257,7 +232,7 @@ sequenceDiagram
 
 ---
 
-## Running locally
+## Running Locally
 
 1. **Install Dependencies**:
    ```bash

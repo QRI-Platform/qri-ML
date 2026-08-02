@@ -3,54 +3,50 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 ORCHESTRATOR_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
-        "You are an orchestrator that decides whether a user query requires searching a document database.\n"
-        "Default to require_db_search = true for any questions asking about documents, resumes, PDFs, names, details, background, facts, summaries, or specific information.\n"
-        "Only set require_db_search to false if the user message is purely a casual greeting (e.g., 'hi', 'hello', 'how are you', 'thanks') with no request for information."
+        "Analyze the conversation history and user query to decide if vector database retrieval is required.\n\n"
+        "RULES:\n"
+        "- Set `require_db_search = true` if the query requests facts, document contents, resumes, backgrounds, or specific details.\n"
+        "- Set `require_db_search = false` ONLY for casual greetings (e.g., 'hi', 'thanks') or self-contained general statements."
     ),
     MessagesPlaceholder(variable_name="messages")
 ])
+
 QUERY_GENERATION_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", "You are a query generator. Given the user's question, generate 1-3 precise search queries "
-               "that will help retrieve the most relevant documents from a vector database to answer the question.\n"
-               "Return only the queries matching the required output schema."),
+    (
+        "system",
+        "You are an expert search query optimizer for vector retrieval.\n\n"
+        "TASKS:\n"
+        "1. Resolve implicit pronouns/references (e.g., 'his experience', 'that project') using conversation history.\n"
+        "2. Generate 1 to 3 distinct, concise search queries targeting key concepts for vector retrieval.\n"
+        "Return queries adhering strictly to the output schema."
+    ),
     MessagesPlaceholder(variable_name="messages")
 ])
 
 SUMMARIZER_PROMPT = ChatPromptTemplate.from_messages([
-    MessagesPlaceholder(variable_name="messages"),
     (
-        "human",
-        "If existing summary is present, extend it by incorporating the new messages above. "
-        "Otherwise, create a new summary.\n"
-        "You are an expert conversation summarizer. "
-        "Summarize the conversation in at most {no_of_words} words "
-        "while preserving all important context, decisions, user preferences, "
-        "tasks, and ongoing discussions. Do not add any new information."
-    )
+        "system",
+        "You are an expert conversation summarizer.\n\n"
+        "GUIDELINES:\n"
+        "- Summarize the conversation history in at most {no_of_words} words.\n"
+        "- Retain essential context, key entities, decisions, user preferences, and ongoing tasks without adding new facts."
+    ),
+    MessagesPlaceholder(variable_name="messages")
 ])
+
+SUMMARY_NODE_PROMPT = SUMMARIZER_PROMPT
+
 CHAT_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
-        "You are an AI assistant equipped with a Retrieval-Augmented Generation (RAG) system.\n"
-        "You must answer the user's question clearly and accurately using the provided retrieved database context.\n\n"
+        "You are an AI assistant equipped with RAG and long-term memory capabilities.\n\n"
         "--- LONG-TERM USER MEMORIES ---\n"
         "{user_memories}\n\n"
-        "--- RETRIEVED VECTOR DB CONTEXT ---\n"
+        "--- RETRIEVED VECTOR CONTEXT ---\n"
         "{context}\n\n"
         "INSTRUCTIONS:\n"
-        "1. Prioritize the retrieved vector DB context to answer factual questions.\n"
-        "2. If personal preferences or user details are mentioned, extract 'memory_key' and 'memory_value', otherwise set them to null."
-    ),
-    MessagesPlaceholder(variable_name="messages"),
-])
-
-SUMMARY_NODE_PROMPT = ChatPromptTemplate.from_messages([
-    (
-        "system",
-        "You are an expert conversation summarizer. "
-        "Summarize the given conversation in at most {no_of_words} words "
-        "while preserving all important context, decisions, user preferences, "
-        "tasks, and ongoing discussions. Do not add any new information."
+        "1. GROUNDING: Answer clearly using RETRIEVED VECTOR CONTEXT and USER MEMORIES. If context is insufficient, state limitations accurately without hallucinating.\n"
+        "2. MEMORY EXTRACTION: If the user reveals persistent personal preferences or facts, extract `memory_key` (snake_case) and `memory_value`. Otherwise, set both to null."
     ),
     MessagesPlaceholder(variable_name="messages"),
 ])
