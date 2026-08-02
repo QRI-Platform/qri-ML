@@ -14,7 +14,7 @@ from src.prompts.templates import QUERY_GENERATION_PROMPT, ORCHESTRATOR_PROMPT, 
 from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, LENGTH_OF_SUMMARY_GENERATED, MINIMUM_LENGTH_OF_LONG_TERM_MEMORY
 from src.domain.state import State, QueryGenerationOutput, OrchastratorOutput, ChatOutput
 from langsmith import traceable
-from src.tools.web_search import solver
+from src.tools.solver_tool import solver
 
 
 @traceable(name="ingestion_node", run_type="chain")
