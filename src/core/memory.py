@@ -1,9 +1,7 @@
-import os
 import sys
-from functools import lru_cache
-from psycopg_pool import ConnectionPool
-from langgraph.checkpoint.postgres import PostgresSaver
-from langgraph.store.postgres import PostgresStore
+from psycopg_pool import AsyncConnectionPool
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.store.postgres.aio import AsyncPostgresStore
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.store.base import BaseStore
 
@@ -15,35 +13,65 @@ from src.core.constants import MAXIMUM_CONNECTION_POOL_SIZE
 # Neon DB Connection String
 DB_URI = get_app_config().postgres_sql_url
 
-# Connection Pool for DB Efficiency
-pool = ConnectionPool(conninfo=DB_URI, max_size=MAXIMUM_CONNECTION_POOL_SIZE, kwargs={"autocommit": True})
+# Async Connection Pool
+pool = AsyncConnectionPool(
+    conninfo=DB_URI, 
+    max_size=MAXIMUM_CONNECTION_POOL_SIZE, 
+    kwargs={"autocommit": True},
+    open=False
+)
+
+# Global variables (will be initialized inside init_db_services when event loop starts)
+_checkpointer = None
+_store = None
 
 
-@lru_cache
 def get_checkpointer() -> BaseCheckpointSaver:
-    try:
-        logger.debug("Initializing PostgresSaver checkpointer singleton")
-        # Setup pool connection
-        checkpointer_obj = PostgresSaver(pool)
-        # Table Creation (Must be run once initially)
-        checkpointer_obj.setup()
-        logger.info("PostgresSaver checkpointer initialized successfully")
-        return checkpointer_obj
-    except Exception as e:
-        raise MyException(e, sys)
+    """Returns the initialized async checkpointer instance."""
+    if _checkpointer is None:
+        raise RuntimeError("Database services are not initialized yet! Ensure 'init_db_services()' ran during startup.")
+    return _checkpointer
 
 
-@lru_cache
 def get_store() -> BaseStore:
+    """Returns the initialized async store instance."""
+    if _store is None:
+        raise RuntimeError("Database services are not initialized yet! Ensure 'init_db_services()' ran during startup.")
+    return _store
+
+
+async def init_db_services():
+    """
+    Call this inside FastAPI's lifespan on application startup 
+    when the async event loop is active.
+    """
+    global _checkpointer, _store
     try:
-        logger.debug("Initializing PostgresStore singleton")
-        store_obj = PostgresStore(pool)
-        store_obj.setup()
-        logger.info("PostgresStore initialized successfully")
-        return store_obj
+        logger.debug("Initializing Async Connection Pool, Checkpointer, and Store...")
+        
+        # 1. Open Connection Pool
+        await pool.open()
+        
+        # 2. Instantiate checkpointer and store inside active event loop
+        _checkpointer = AsyncPostgresSaver(pool)
+        _store = AsyncPostgresStore(pool)
+        
+        # 3. Setup Postgres tables
+        await _checkpointer.setup()
+        await _store.setup()
+        
+        logger.info("Async PostgresSaver and Store initialized successfully")
     except Exception as e:
         raise MyException(e, sys)
 
 
-checkpointer = get_checkpointer()
-store = get_store()
+async def close_db_services():
+    """
+    Call this inside FastAPI's lifespan on application shutdown.
+    """
+    try:
+        logger.debug("Closing Async Connection Pool...")
+        await pool.close()
+        logger.info("Async Connection Pool closed successfully")
+    except Exception as e:
+        raise MyException(e, sys)

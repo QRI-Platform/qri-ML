@@ -20,7 +20,7 @@ async def summerizer(state: State, config: RunnableConfig):
         logger.info("summerizer node started for thread=%s", thread_id)
         
         messages = state.messages
-        
+
         # Check if we have enough messages to trim/summarize
         if len(messages) <= NO_OF_LAST_MESSAGES_TO_KEEP:
             logger.info("Not enough messages to summarize — skipping")
@@ -28,26 +28,27 @@ async def summerizer(state: State, config: RunnableConfig):
 
         messages_to_summarize = messages[:-NO_OF_LAST_MESSAGES_TO_KEEP]
 
-        if not messages_to_summarize:
-            logger.info("No old messages to delete/summarize — skipping")
+        # Only keep messages that have a valid ID — can't remove what has no ID
+        deletable = [m for m in messages_to_summarize if m.id]
+        if not deletable:
+            logger.info("No messages with IDs to delete — skipping summarization")
             return {}
 
-        # Prepare prompt input
+        # Summarize the deletable messages
         summary_messages = SUMMARIZER_PROMPT.invoke({
-            "messages": messages_to_summarize,
+            "messages": deletable,
             "no_of_words": NO_OF_WORDS_TO_SUMMARIZE
         })
 
         llm = get_llm()
         response = await llm.ainvoke(summary_messages)
 
-        # Delete old messages from memory graph state
-        delete_messages = [RemoveMessage(id=m.id) for m in messages_to_summarize if m.id]
-        
-        logger.info("Summarization completed, deleting %d old messages", len(delete_messages))
-        state.messages = SystemMessage(content=f"user summerized messages:{response.content}") + messages[-NO_OF_LAST_MESSAGES_TO_KEEP:]  # Keep only the last few messages
+        delete_ops = [RemoveMessage(id=m.id) for m in deletable]
+        summary_msg = SystemMessage(content=f"Conversation summary: {response.content}")
+
+        logger.info("Summarization completed, deleting %d old messages", len(delete_ops))
         return {
-            "messages": [delete_messages],
+            "messages": delete_ops + [summary_msg],
         }
         
     except Exception as e:

@@ -6,12 +6,13 @@ from src.domain.config_entities import DataIngestionConfig, RetrieverConfig
 from src.domain.artifacts import DataIngestionArtifact
 from src.llm.llm_loader import get_llm
 from src.retrievers.pinecone_retriever import get_retriever
+from src.retrievers.pinecone_client import get_pinecone_client
 from src.core.memory import get_store
 from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.store.base import BaseStore
 from src.prompts.templates import QUERY_GENERATION_PROMPT, ORCHESTRATOR_PROMPT, CHAT_PROMPT, SUMMARY_NODE_PROMPT
-from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, LENGTH_OF_SUMMARY_GENERATED, MINIMUM_LENGTH_OF_LONG_TERM_MEMORY
+from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, LENGTH_OF_SUMMARY_GENERATED, MINIMUM_LENGTH_OF_LONG_TERM_MEMORY, DEFAULT_INDEX_NAME
 from src.domain.state import State, QueryGenerationOutput, OrchastratorOutput, ChatOutput
 from langsmith import traceable
 
@@ -40,18 +41,37 @@ async def ingestion_node(state: State, config: RunnableConfig):
 
 
 @traceable(name="orchastrator_node", run_type="chain")
-async def orchastrator_node(state: State) -> dict:
+async def orchastrator_node(state: State, config: RunnableConfig) -> dict:
     try:
         logger.info("orchastrator_node started")
+        thread_id = config.get("configurable", {}).get("thread_id", "unknown")
+
+        # --- Check if this thread's namespace has any vectors in Pinecone ---
+        has_documents = False
+        try:
+            pc = get_pinecone_client()
+            index = pc.Index(DEFAULT_INDEX_NAME)
+            stats = index.describe_index_stats()
+            ns_stats = stats.get("namespaces", {}).get(str(thread_id), {})
+            vector_count = ns_stats.get("vector_count", 0)
+            has_documents = vector_count > 0
+            logger.info("Pinecone namespace=%s has %d vectors (has_documents=%s)", thread_id, vector_count, has_documents)
+        except Exception as pc_err:
+            logger.warning("Could not query Pinecone stats, defaulting has_documents=False: %s", pc_err)
+
+        # If documents exist, always do retrieval — don't trust small LLM to decide
+        if has_documents:
+            logger.info("Orchestrator: documents found — forcing require_db_search=True")
+            return {"require_db_search": True, "has_documents": True}
+
+        # No documents — let LLM decide (only useful for general conversation)
         llm = get_llm()
         structured_llm = llm.with_structured_output(OrchastratorOutput)
-
-        
         prompt_input = ORCHESTRATOR_PROMPT.invoke({"messages": state.messages})
         result = await structured_llm.ainvoke(prompt_input)
-        
-        logger.info("Orchestrator decision: require_db_search=%s", result.require_db_search)
-        return {"require_db_search": result.require_db_search}
+
+        logger.info("Orchestrator LLM decision: require_db_search=%s", result.require_db_search)
+        return {"require_db_search": result.require_db_search, "has_documents": False}
     except Exception as e:
         logger.error("orchastrator_node failed: %s", str(e))
         raise MyException(e, sys)
@@ -100,7 +120,7 @@ async def chat_node(state: State, config: RunnableConfig, store: BaseStore):
         logger.info("chat_node started for user=%s, messages_count=%d", user_id, len(state.messages))
 
         # Long term memory retrieve
-        lsm = store.search(("user", str(user_id), "details"))
+        lsm = await store.asearch(("user", str(user_id), "details"))
         user_memories = "\n".join([f"- {item.key}: {item.value.get('data')}" for item in lsm if item.value]) if lsm else "None"
 
         # Context & summary preparation
@@ -121,7 +141,7 @@ async def chat_node(state: State, config: RunnableConfig, store: BaseStore):
         if chat_res.memory_key and chat_res.memory_value and chat_res.memory_key.lower() not in ["null", "none"]:
             key_name = chat_res.memory_key.strip().lower().replace(" ", "_")
             logger.info("Storing long-term memory for user %s: %s = %s", user_id, key_name, chat_res.memory_value)
-            store.put(
+            await store.aput(
                 namespace=("user", str(user_id), "details"),
                 key=key_name,
                 value={"data": chat_res.memory_value.strip()}

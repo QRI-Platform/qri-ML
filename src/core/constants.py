@@ -7,7 +7,7 @@ EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
 RETRIEVER_TOP_K: int = 4
 NAMESPACE = None
 
-LLM_MODEL_NAME: str = "llama-3.1-8b-instant"
+LLM_MODEL_NAME: str = "llama-3.3-70b-versatile"
 
 CHUNK_SIZE: int = 1000
 CHUNK_OVERLAP: int = 200

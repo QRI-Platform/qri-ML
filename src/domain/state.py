@@ -31,6 +31,7 @@ class State(BaseModel):
     messages: Annotated[List[BaseMessage], add] = Field(default_factory=list)
     file_paths: List[str] = Field(default_factory=list)
     require_db_search: bool = False
+    has_documents: bool = False  # True when Pinecone namespace has vectors for this thread
     queries: List[str] = Field(default_factory=list)
     retreived_results: List[Any] = Field(default_factory=list)
     ai_response: Optional[str] = None

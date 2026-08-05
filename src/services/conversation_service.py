@@ -60,11 +60,16 @@ async def load_conversation(thread_id: str, user_id: str):
 @traceable(name="delete_user_conversation", run_type="chain")
 async def delete_user_conversation(thread_id: str, user_id: str):
     try:
-        graph = get_graph()
-        await graph.adelete(config={"configurable": {"thread_id": thread_id, "user_id": user_id}})
+        cp = get_checkpointer()
+        state = await cp.aget_tuple(config={"configurable": {"thread_id": thread_id}})
+        if state is None:
+            logger.info("Thread %s not found, nothing to delete.", thread_id)
+            return False
+        await cp.adelete_thread(thread_id=thread_id)
+        logger.info("Thread %s deleted successfully.", thread_id)
         return True
     except Exception as e:
-        logger.error(str(e))
+        logger.error("delete_user_conversation failed: %s", str(e))
         return False
 
 
@@ -72,7 +77,7 @@ async def delete_user_conversation(thread_id: str, user_id: str):
 async def get_user_long_term_memory(user_id: str):
     try:
         store = get_store()
-        memories = store.search(("user", str(user_id), "details"))
+        memories = await store.asearch(("user", str(user_id), "details"))
         serialized = []
         for item in memories:
             serialized.append({
@@ -83,3 +88,34 @@ async def get_user_long_term_memory(user_id: str):
     except Exception as e:
         logger.error("Error retrieving long term memory: %s", e)
         return []
+
+
+async def delete_long_term_memory_key(user_id: str, key: str):
+    """Delete a single key from the user's long-term memory namespace."""
+    try:
+        store = get_store()
+        await store.adelete(
+            namespace=("user", str(user_id), "details"),
+            key=key,
+        )
+        logger.info("Deleted LTM key='%s' for user=%s", key, user_id)
+    except Exception as e:
+        logger.error("Error deleting LTM key '%s' for user %s: %s", key, user_id, e)
+        raise
+
+
+async def upsert_long_term_memory(user_id: str, key: str, value: str):
+    """Add or update a key-value pair in the user's long-term memory."""
+    try:
+        store = get_store()
+        key_name = key.strip().lower().replace(" ", "_")
+        await store.aput(
+            namespace=("user", str(user_id), "details"),
+            key=key_name,
+            value={"data": value.strip()},
+        )
+        logger.info("Upserted LTM key='%s' for user=%s", key_name, user_id)
+        return key_name
+    except Exception as e:
+        logger.error("Error upserting LTM key '%s' for user %s: %s", key, user_id, e)
+        raise

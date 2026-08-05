@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Request,Depends
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException
+from pydantic import BaseModel
 from src.core.logger import logger
 from api.middlewares.authentication_middleware import authenticate_user
 from src.services.conversation_service import (
@@ -8,6 +9,8 @@ from src.services.conversation_service import (
     delete_pinecone_namespace,
     get_user_long_term_memory,
     delete_user_conversation,
+    delete_long_term_memory_key,
+    upsert_long_term_memory,
 )
 
 router: APIRouter = APIRouter(dependencies=[Depends(authenticate_user)])
@@ -55,8 +58,69 @@ async def delete_user_conversation_endpoint(request: Request):
         success = await delete_user_conversation(thread_id=request.state.thread_id, user_id=request.state.user_id)
         if success:
             return JSONResponse(content={"success": success, "message": "Conversation deleted", "data": None})
-        
         else:
             return JSONResponse(content={"success": success, "message": "Conversation didn't deleted", "data": None})
     except Exception as e:
+        raise HTTPException(status_code=400, detail={"success": False, "message": str(e), "data": None})
+
+
+# ── Long-Term Memory Management ──────────────────────────────────────────────
+
+class UpsertMemoryRequest(BaseModel):
+    key: str
+    value: str
+
+
+@router.post("/long_term_memory")
+async def add_or_update_long_term_memory(request: Request, body: UpsertMemoryRequest):
+    """Add or update a specific key-value pair in the user's long-term memory."""
+    try:
+        user_id: str = request.state.user_id
+        logger.info("Upserting LTM key='%s' for user=%s", body.key, user_id)
+        saved_key = await upsert_long_term_memory(user_id=user_id, key=body.key, value=body.value)
+        return JSONResponse(content={
+            "success": True,
+            "message": f"Memory '{saved_key}' saved successfully",
+            "data": {"key": saved_key, "value": body.value},
+        })
+    except Exception as e:
+        logger.error("Upsert LTM failed: %s", str(e))
+        raise HTTPException(status_code=400, detail={"success": False, "message": str(e), "data": None})
+
+
+@router.delete("/long_term_memory/{key}")
+async def delete_long_term_memory_key_endpoint(request: Request, key: str):
+    """Delete a single key from the user's long-term memory."""
+    try:
+        user_id: str = request.state.user_id
+        logger.info("Deleting LTM key='%s' for user=%s", key, user_id)
+        await delete_long_term_memory_key(user_id=user_id, key=key)
+        return JSONResponse(content={
+            "success": True,
+            "message": f"Memory key '{key}' deleted successfully",
+            "data": None,
+        })
+    except Exception as e:
+        logger.error("Delete LTM key failed: %s", str(e))
+        raise HTTPException(status_code=400, detail={"success": False, "message": str(e), "data": None})
+
+
+@router.delete("/long_term_memory")
+async def delete_all_long_term_memory(request: Request):
+    """Delete ALL long-term memory entries for this user."""
+    try:
+        user_id: str = request.state.user_id
+        logger.info("Deleting ALL LTM for user=%s", user_id)
+        memories = await get_user_long_term_memory(user_id=user_id)
+        for item in memories:
+            key = item.get("key")
+            if key:
+                await delete_long_term_memory_key(user_id=user_id, key=key)
+        return JSONResponse(content={
+            "success": True,
+            "message": f"All {len(memories)} memory entries deleted",
+            "data": None,
+        })
+    except Exception as e:
+        logger.error("Delete all LTM failed: %s", str(e))
         raise HTTPException(status_code=400, detail={"success": False, "message": str(e), "data": None})

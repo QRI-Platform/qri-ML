@@ -6,7 +6,7 @@ from src.embeddings.embedding_loader import get_embeddings
 from src.retrievers.pinecone_client import get_pinecone_client
 from src.core.memory import get_checkpointer, get_store
 from src.db.thread_manager import get_thread_manager
-
+from src.core.memory import init_db_services,close_db_services
 
 def setup_langsmith():
     cfg = get_app_config()
@@ -39,3 +39,14 @@ def warmup_dependencies():
     _ = get_store()
     _ = get_thread_manager()
     logger.info("All dependencies singletons warmed up successfully.")
+
+
+async def connection_pool():
+    logger.info("Stablishing connection with db")
+    await init_db_services()
+
+
+async def close_connection_pool():
+    logger.info("Closing connection with db")
+    await close_db_services()
+

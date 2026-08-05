@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from src.core.logger import logger
 from src.core.dependencies import warmup_dependencies
 from src.pipelines.graph_runner_pipeline import get_graph_runner_pipeline
+from src.core.dependencies import connection_pool, close_connection_pool
 from api.routes.graph_routes import router as graph_router
 from api.routes.user_routes import router as UserRouter
 
@@ -10,11 +11,13 @@ from api.routes.user_routes import router as UserRouter
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Server startup: warming up all singletons...")
+    await connection_pool()       # Must run first — initializes _checkpointer & _store
     warmup_dependencies()
     get_graph_runner_pipeline()
     logger.info("All singletons initialized — server is ready")
     yield
     logger.info("Server shutdown")
+    await close_connection_pool()
 
 
 app = FastAPI(lifespan=lifespan)
