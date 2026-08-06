@@ -2,7 +2,7 @@ import os
 import shutil
 import sys
 from typing import List
-from fastapi import Request, UploadFile
+from fastapi import Request, UploadFile, File
 from src.core.constants import PUBLIC_TEMP_DIR
 from src.core.exceptions import MyException
 from src.core.logger import logger
@@ -12,7 +12,7 @@ os.makedirs(PUBLIC_TEMP_DIR, exist_ok=True)
 # takes list of files as input
 async def multer_middleware(
     request: Request,
-    files: List[UploadFile] = None,
+    files: List[UploadFile] = File(default=None),
 ):
     saved_paths: List[str] = []
     try:
