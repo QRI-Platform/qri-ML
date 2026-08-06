@@ -4,13 +4,13 @@ METRIC: str = "cosine"
 CLOUD_PROVIDER: str = "aws"
 CLOUD_REGION: str = "us-east-1"
 EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
-RETRIEVER_TOP_K: int = 4
+RETRIEVER_TOP_K: int = 10 # top 10 most relevant documents to retrieve from vector store
 NAMESPACE = None
 
 LLM_MODEL_NAME: str = "llama-3.3-70b-versatile"
 
-CHUNK_SIZE: int = 1000
-CHUNK_OVERLAP: int = 200
+CHUNK_SIZE: int = 800 # around _ words
+CHUNK_OVERLAP: int = 150
 
 PUBLIC_TEMP_DIR: str = "uploads"
 LOGS_DIR: str = "logs"

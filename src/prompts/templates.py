@@ -5,7 +5,7 @@ ORCHESTRATOR_PROMPT = ChatPromptTemplate.from_messages([
         "system",
         "Analyze the conversation history and user query to decide if vector database retrieval is required.\n\n"
         "RULES:\n"
-        "- Set `require_db_search = true` if the query requests facts, document contents, resumes, backgrounds, or specific details.\n"
+        "- Set `require_db_search = true` if the query requests facts, document contents, resumes, backgrounds, or specific details. only set it ture when user has uploaded content is true \n has user uploaded contnet {has_documents}"
         "- Set `require_db_search = false` ONLY for casual greetings (e.g., 'hi', 'thanks') or self-contained general statements."
     ),
     MessagesPlaceholder(variable_name="messages")

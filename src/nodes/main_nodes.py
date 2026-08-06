@@ -60,18 +60,21 @@ async def orchastrator_node(state: State, config: RunnableConfig) -> dict:
             logger.warning("Could not query Pinecone stats, defaulting has_documents=False: %s", pc_err)
 
         # If documents exist, always do retrieval — don't trust small LLM to decide
-        if has_documents:
-            logger.info("Orchestrator: documents found — forcing require_db_search=True")
-            return {"require_db_search": True, "has_documents": True}
+        # if has_documents:
+        #     logger.info("Orchestrator: documents found — forcing require_db_search=True")
+        #     return {"require_db_search": True, "has_documents": True}
 
         # No documents — let LLM decide (only useful for general conversation)
         llm = get_llm()
         structured_llm = llm.with_structured_output(OrchastratorOutput)
-        prompt_input = ORCHESTRATOR_PROMPT.invoke({"messages": state.messages})
+        prompt_input = ORCHESTRATOR_PROMPT.invoke({"messages": state.messages,"has_documents": has_documents})
         result = await structured_llm.ainvoke(prompt_input)
 
         logger.info("Orchestrator LLM decision: require_db_search=%s", result.require_db_search)
-        return {"require_db_search": result.require_db_search, "has_documents": False}
+        if result.require_db_search and not has_documents:
+            logger.warning("Orchestrator LLM requested DB search but no documents found — overriding to require_db_search=False")
+            result.require_db_search = False
+        return {"require_db_search": result.require_db_search, "has_documents": has_documents}
     except Exception as e:
         logger.error("orchastrator_node failed: %s", str(e))
         raise MyException(e, sys)
