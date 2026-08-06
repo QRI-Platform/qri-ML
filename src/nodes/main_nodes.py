@@ -13,7 +13,7 @@ from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.store.base import BaseStore
 from src.prompts.templates import QUERY_GENERATION_PROMPT, ORCHESTRATOR_PROMPT, CHAT_PROMPT, SUMMARY_NODE_PROMPT
-from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, LENGTH_OF_SUMMARY_GENERATED, MINIMUM_LENGTH_OF_LONG_TERM_MEMORY, DEFAULT_INDEX_NAME
+from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, LENGTH_OF_SUMMARY_GENERATED, MINIMUM_LENGTH_OF_LONG_TERM_MEMORY, DEFAULT_INDEX_NAME, LLM_OUTPUT_MAX_WORDS
 from src.domain.state import State, QueryGenerationOutput, OrchastratorOutput, ChatOutput
 from langsmith import traceable
 from typing import Optional,List,Optional
@@ -161,6 +161,7 @@ async def chat_node(state: State, config: RunnableConfig, store: BaseStore):
             "user_memories": user_memories,
             "context": context,
             "messages": state.messages,
+            "max_words": LLM_OUTPUT_MAX_WORDS
         })
 
         # Bind tools, then layer structured-output with include_raw=True so we

@@ -217,6 +217,10 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+logs/
+artifacts/
+uploads/
+data/app.db
 
 .file
 timeline.md

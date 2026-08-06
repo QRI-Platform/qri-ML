@@ -46,7 +46,8 @@ CHAT_PROMPT = ChatPromptTemplate.from_messages([
         "{context}\n\n"
         "INSTRUCTIONS:\n"
         "1. GROUNDING: Answer clearly using RETRIEVED VECTOR CONTEXT and USER MEMORIES. If context is insufficient, state limitations accurately without hallucinating.\n"
-        "2. MEMORY EXTRACTION: If the user reveals persistent personal preferences or facts, extract memory_key (snake_case) and memory_value. Otherwise set both to null."
+        "2. CONCISENESS LIMIT: Keep your response extremely concise and clear. Do NOT exceed {max_words} words under any circumstances.\n"
+        "3. MEMORY EXTRACTION: If the user reveals persistent personal preferences or facts, extract memory_key (snake_case) and memory_value. Otherwise set both to null."
     ),
     MessagesPlaceholder(variable_name="messages"),
 ])

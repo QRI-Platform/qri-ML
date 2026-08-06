@@ -512,4 +512,154 @@ docker run -p 8000:8000 --env-file .env qri
 
 ---
 
+## Universal Cost Calculator & Formula Model
+
+Use this dynamic formula model to recalculate system operational costs whenever constants in `src/core/constants.py`, model pricing, user count, or limits change.
+
+### Constants to Token Formulas (Node Breakdown)
+
+In QRI, each user question executes up to 3 LLM nodes (`orchestrator_node`, `query_generation_node`, and `chat_node`). All token calculations are derived directly from the parameters in `src/core/constants.py`:
+
+1. **Total Input Tokens ($T_{in}$)**:
+   $$T_{in} = \text{SYSTEM\_PROMPTS\_BASE} + \left( \text{RETRIEVER\_TOP\_K} \times \frac{\text{CHUNK\_SIZE}}{4} \right) + (\text{NO\_OF\_LAST\_MESSAGES\_TO\_KEEP} \times 100) + (\text{LENGTH\_OF\_SUMMARY\_GENERATED} \times 1.3)$$
+
+   - **Formula Terms & Token Derivations**:
+     - $\frac{\text{CHUNK\_SIZE}}{4} = \frac{800}{4} = \mathbf{200 \text{ tokens/chunk}}$ *(Rule: 1 token $\approx$ 4 characters in English NLP tokenization)*.
+     - $\text{NO\_OF\_LAST\_MESSAGES\_TO\_KEEP} \times 100$: **100 tokens/message** (Upper-bound estimation: User question ~35 tokens + AI response ~90 tokens = Avg ~60-100 tokens per history message turn).
+     - $\text{LENGTH\_OF\_SUMMARY\_GENERATED} \times 1.3 = 50 \times 1.3 = \mathbf{65 \text{ tokens}}$ *(Rule: 1 word $\approx$ 1.3 tokens in Llama-3 BPE tokenizer)*.
+     - $\text{SYSTEM\_PROMPTS\_BASE} = \mathbf{500 \text{ tokens}}$ *(Fixed overhead for system instructions in Orchestrator, QueryGen, and Chat prompts)*.
+
+   - **Current Values Calculation** ($\text{RETRIEVER\_TOP\_K}=4, \text{CHUNK\_SIZE}=800, \text{NO\_OF\_LAST\_MESSAGES\_TO\_KEEP}=4, \text{LENGTH\_OF\_SUMMARY\_GENERATED}=50$):
+     $$T_{in} = 500 + \left(4 \times \frac{800}{4}\right) + (4 \times 100) + (50 \times 1.3) = 500 + 800 + 400 + 65 = \mathbf{1,765 \text{ Tokens}}$$
+
+2. **Total Output Tokens ($T_{out}$)**:
+   $$T_{out} = \text{OTHER\_NODES\_OUTPUT\_BASE} + (\text{LLM\_OUTPUT\_MAX\_WORDS} \times 1.35)$$
+   - *Current Values Calculation* ($\text{OTHER\_NODES\_OUTPUT\_BASE}=50, \text{LLM\_OUTPUT\_MAX\_WORDS}=100$):
+     $$T_{out} = 50 + (100 \times 1.35) = 50 + 135 = \mathbf{185 \text{ Tokens}}$$
+
+---
+
+### Variables & Inputs
+
+| Symbol | Meaning | Default Value |
+|---|---|---|
+| **$U$** | Total Paid Users | 10,000 |
+| **$Q_{user}$** | Monthly Question Limit / Usage per User | 150 (Max Limit) / 75 (Average Usage) |
+| **$P_{plan}$** | Monthly Plan Price (INR) | ₹9 |
+| **$T_{in}$** | Total Input Tokens per Question (All Nodes) | 1,765 |
+| **$T_{out}$** | Total Output Tokens per Question (All Nodes) | 185 |
+| **$R_{in}$** | Groq Input Rate per 1M Tokens (USD) | $0.59 |
+| **$R_{out}$** | Groq Output Rate per 1M Tokens (USD) | $0.79 |
+| **$FX$** | USD to INR Exchange Rate | 84.0 |
+| **$C_{infra}$** | Fixed Monthly Infra (Server + DB + Pinecone + Logging) in USD | $150 |
+
+---
+
+### Step-by-Step Mathematical Formulas
+
+#### 1. Per-Question AI Cost ($C_{Q}$)
+$$C_{Q\_USD} = \left( \frac{T_{in} \times R_{in}}{1,000,000} \right) + \left( \frac{T_{out} \times R_{out}}{1,000,000} \right)$$
+$$C_{Q\_INR} = C_{Q\_USD} \times FX$$
+
+#### 2. Total Monthly Questions ($Q_{total}$)
+$$Q_{total} = U \times Q_{user}$$
+
+#### 3. Total Monthly AI/LLM Cost ($C_{AI\_total}$)
+$$C_{AI\_total} = Q_{total} \times C_{Q\_INR}$$
+
+#### 4. Total Monthly Infrastructure Cost ($C_{Infra\_total}$)
+$$C_{Infra\_total} = C_{infra} \times FX$$
+
+#### 5. Total Technical Cost ($C_{Total}$)
+$$C_{Total} = C_{AI\_total} + C_{Infra\_total}$$
+
+#### 6. Technical Cost Per Paid User ($C_{user}$)
+$$C_{user} = \frac{C_{Total}}{U}$$
+
+#### 7. Total Revenue & Net Technical Margin
+$$\text{Revenue} = U \times P_{plan}$$
+$$\text{Net Profit} = \text{Revenue} - C_{Total}$$
+
+### Step-by-Step Worked Example & Tabular Matrix (₹9 Plan @ 10,000 Paid Users)
+
+#### Inputs
+- $U = 10,000$ users | $P_{plan} = \text{₹9/month}$
+- $T_{in} = 1,765$ tokens | $T_{out} = 185$ tokens
+- $R_{in} = \$0.59 / 1\text{M}$ | $R_{out} = \$0.79 / 1\text{M}$
+- $FX = 84.0$ | $C_{infra} = \$150 / \text{month}$
+
+#### Line-by-Line Execution
+
+1. **Per-Question AI Cost ($C_Q$)**:
+   $$C_{Q\_USD} = \left( \frac{1,765 \times 0.59}{1,000,000} \right) + \left( \frac{185 \times 0.79}{1,000,000} \right) = 0.00104135 + 0.00014615 = \mathbf{\$0.0011875}$$
+   $$C_{Q\_INR} = \$0.0011875 \times 84.0 = \mathbf{\text{₹0.09975 / question (9.97 Paise)}}$$
+
+2. **Total Monthly Questions ($Q_{total}$)**:
+   - Scenario A (Low - 35 Qs/mo): $Q_{total} = 10,000 \times 35 = \mathbf{350,000}$
+   - Scenario B (Avg - 75 Qs/mo): $Q_{total} = 10,000 \times 75 = \mathbf{750,000}$
+   - Scenario C (Max - 150 Qs/mo): $Q_{total} = 10,000 \times 150 = \mathbf{1,500,000}$
+
+3. **Total Monthly AI Cost ($C_{AI\_total}$)**:
+   - Scenario A: $350,000 \times \text{₹0.09975} = \mathbf{\text{₹34,912.50}}$
+   - Scenario B: $750,000 \times \text{₹0.09975} = \mathbf{\text{₹74,812.50}}$
+   - Scenario C: $1,500,000 \times \text{₹0.09975} = \mathbf{\text{₹149,625.00}}$
+
+4. **Total Monthly Infra Cost ($C_{Infra\_total}$)**:
+   $$C_{Infra\_total} = \$150 \times 84.0 = \mathbf{\text{₹12,600.00 / month}}$$
+
+5. **Total Technical Cost ($C_{Total}$)**:
+   - Scenario A: $\text{₹34,912.50} + \text{₹12,600.00} = \mathbf{\text{₹47,512.50}}$
+   - Scenario B: $\text{₹74,812.50} + \text{₹12,600.00} = \mathbf{\text{₹87,412.50}}$
+   - Scenario C: $\text{₹149,625.00} + \text{₹12,600.00} = \mathbf{\text{₹162,225.00}}$
+
+6. **Technical Cost Per Paid User ($C_{user}$)**:
+   - Scenario A: $\frac{\text{₹47,512.50}}{10,000} = \mathbf{\text{₹4.75 / user / month}}$
+   - Scenario B: $\frac{\text{₹87,412.50}}{10,000} = \mathbf{\text{₹8.74 / user / month}}$
+   - Scenario C: $\frac{\text{₹162,225.00}}{10,000} = \mathbf{\text{₹16.22 / user / month}}$
+
+7. **Total Revenue & Net Margin (Revenue = ₹90,000.00)**:
+   - Scenario A: $\text{₹90,000} - \text{₹47,512.50} = \mathbf{+\text{₹42,487.50 Profit (47.2\% Margin)}}$
+   - Scenario B: $\text{₹90,000} - \text{₹87,412.50} = \mathbf{+\text{₹2,587.50 Profit (2.9\% Margin)}}$
+   - Scenario C: $\text{₹90,000} - \text{₹162,225.00} = \mathbf{-\text{₹72,225.00 Loss}}$
+
+---
+
+#### 📊 Tabular Summary Matrix
+
+| Metric | Scenario A (Low - 35 Qs) | Scenario B (Avg - 75 Qs) | Scenario C (Max - 150 Qs) |
+|---|---|---|---|
+| **Total Monthly Questions** | 350,000 | 750,000 | 1,500,000 |
+| **AI LLM Cost (Groq)** | ₹34,912.50 | ₹74,812.50 | ₹149,625.00 |
+| **Infra Cost (DB+Server)** | ₹12,600.00 | ₹12,600.00 | ₹12,600.00 |
+| **Total Technical Cost** | **₹47,512.50** | **₹87,412.50** | **₹162,225.00** |
+| **Cost Per Paid User** | **₹4.75** | **₹8.74** | **₹16.22** |
+| **Total Plan Revenue** | ₹90,000.00 | ₹90,000.00 | ₹90,000.00 |
+| **Net Monthly Margin** | **+₹42,487.50** (Profit) | **+₹2,587.50** (Profit) | **-₹72,225.00** (Loss) |
+
+---
+
+### Excel / Google Sheets Formula Setup
+
+```text
+Cell A1 (Users): 10000
+Cell A2 (Qs per user): 75
+Cell A3 (Plan Price): 9
+Cell A4 (Input Tokens): 1765
+Cell A5 (Output Tokens): 185
+Cell A6 (Input Rate): 0.59
+Cell A7 (Output Rate): 0.79
+Cell A8 (USD to INR): 84
+Cell A9 (Infra Cost USD): 150
+
+Formulas:
+- Cost Per Question INR = ((A4*A6/1000000)+(A5*A7/1000000))*A8
+- Total AI Cost INR = A1 * A2 * Cost_Per_Question_INR
+- Total Infra Cost INR = A9 * A8
+- Total Technical Cost INR = Total_AI_Cost_INR + Total_Infra_Cost_INR
+- Cost Per User INR = Total_Technical_Cost_INR / A1
+- Net Monthly Profit = (A1 * A3) - Total_Technical_Cost_INR
+```
+
+---
+
 *Built by VashuTheGreat*
