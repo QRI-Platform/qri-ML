@@ -9,7 +9,7 @@ from src.core.logger import logger
 from src.core.exceptions import MyException
 from src.core.memory import get_checkpointer
 
-
+# user threads manager locally in sqlite --deprecated
 class ThreadManager:
     def __init__(self, db_path: str = SQLITE_DB_PATH):
         try:

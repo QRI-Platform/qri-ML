@@ -2,6 +2,7 @@ from fastapi import Request, HTTPException
 from src.core.logger import logger
 
 
+# takes user_id and thread_id as input in the params or headers
 async def authenticate_user(request: Request, user_id: str | None = None, thread_id: str | None = None):
     try:
         user_id = user_id or request.query_params.get("user_id") or request.headers.get("user_id") or request.headers.get("x-user-id")

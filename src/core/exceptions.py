@@ -13,7 +13,7 @@ def error_message_detail(error: Exception, error_detail: sys) -> str:
     logger.error(error_message)
     return error_message
 
-
+# custom class to raise Exceptions
 class MyException(Exception):
     def __init__(self, error_message: str, error_detail: sys):
         super().__init__(error_message)

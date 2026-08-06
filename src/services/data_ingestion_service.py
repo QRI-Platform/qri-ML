@@ -1,9 +1,11 @@
 import sys
+import asyncio
+from functools import partial
 from typing import List
 from langchain_docling.loader import DoclingLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-
+import os
 from src.retrievers.pinecone_retriever import Retriever
 from src.domain.config_entities import DataIngestionConfig
 from src.domain.artifacts import DataIngestionArtifact
@@ -17,6 +19,28 @@ class DataIngestion:
         self.data_ingestion_config = data_ingestion_config
         self.retriever = retriever
         logger.debug("DataIngestion initialized for %d files", len(data_ingestion_config.files_path))
+
+    @staticmethod
+    def _inject_filename_metadata(documents: List[Document], file_path: str, namespace: str) -> List[Document]:
+        """Inject a 'filename' key into every document's metadata.
+
+        The stored value is ``{namespace}_{original_filename}`` so that each
+        file is uniquely addressable per thread/namespace in Pinecone.
+        This allows the retriever to filter by filename when the user
+        mentions ``@filename`` in the chat.
+        """
+        
+        original_name = os.path.basename(file_path)
+        tagged_name = f"{namespace}_{original_name}" if namespace else original_name
+        for doc in documents:
+            doc.metadata["filename"] = tagged_name
+        logger.debug(
+            "Injected filename='%s' into %d documents from file '%s'",
+            tagged_name,
+            len(documents),
+            file_path,
+        )
+        return documents
 
     @traceable(name="docling_file_loader", run_type="parser")
     async def get_loader(self) -> List[DoclingLoader]:
@@ -60,8 +84,27 @@ class DataIngestion:
             loaders = await self.get_loader()
             all_documents: List[Document] = []
 
-            for loader in loaders:
-                docs = loader.load()
+            namespace = self.data_ingestion_config.namespace or ""
+            loop = asyncio.get_event_loop()
+
+            # DoclingLoader.load() is CPU-heavy + synchronous (PDF parsing, OCR,
+            # table extraction). Run each loader in a thread-pool executor so the
+            # async event loop is never blocked. Multiple files are loaded in
+            # parallel via asyncio.gather().
+            async def load_one(file_path: str, loader) -> List[Document]:
+                docs = await loop.run_in_executor(None, loader.load)
+                return self._inject_filename_metadata(
+                    documents=docs,
+                    file_path=file_path,
+                    namespace=namespace,
+                )
+
+            tasks = [
+                load_one(fp, loader)
+                for fp, loader in zip(self.data_ingestion_config.files_path, loaders)
+            ]
+            results = await asyncio.gather(*tasks)
+            for docs in results:
                 all_documents.extend(docs)
                 logger.debug("Loaded %d docs from loader", len(docs))
 

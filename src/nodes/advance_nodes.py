@@ -43,6 +43,7 @@ async def summerizer(state: State, config: RunnableConfig):
         llm = get_llm()
         response = await llm.ainvoke(summary_messages)
 
+        # deleting summerized messages
         delete_ops = [RemoveMessage(id=m.id) for m in deletable]
         summary_msg = SystemMessage(content=f"Conversation summary: {response.content}")
 

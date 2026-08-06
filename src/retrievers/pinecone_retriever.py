@@ -91,14 +91,23 @@ class Retriever:
         self,
         vector_store: PineconeVectorStore,
         query: str,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: Optional[List[str]] = None,
     ):
         try:
             logger.info("Similarity search for query: %s", query)
+
+            # Build a proper Pinecone metadata filter when filenames are provided.
+            # Each filename in the list is ``{thread_id}_{original_filename}``
+            # (as stored during ingestion via _inject_filename_metadata).
+            pinecone_filter: Optional[Dict[str, Any]] = None
+            if filter:
+                pinecone_filter = {"filename": {"$in": filter}}
+                logger.info("Applying filename filter: %s", filter)
+
             results = vector_store.similarity_search(
                 query=query,
                 k=self.retriever_config.k,
-                filter=filter,
+                filter=pinecone_filter,
             )
             logger.info("Retrieved %d documents", len(results))
             return results

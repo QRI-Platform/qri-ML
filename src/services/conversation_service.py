@@ -6,6 +6,7 @@ from src.retrievers.pinecone_retriever import get_retriever
 from src.core.memory import get_checkpointer, get_store
 from src.graphs.builder import get_graph
 from langsmith import traceable
+from langchain_core.messages import messages_to_dict
 
 
 async def delete_thread_data(thread_id: str, delay_seconds: int = 0):
@@ -37,19 +38,9 @@ async def load_conversation(thread_id: str, user_id: str):
             return []
 
         raw_messages = state.checkpoint.get('channel_values', {}).get('messages', [])
-        serialized_messages = []
-        for msg in raw_messages:
-            if hasattr(msg, "dict"):
-                serialized_messages.append(msg.dict())
-            elif hasattr(msg, "model_dump"):
-                serialized_messages.append(msg.model_dump())
-            elif isinstance(msg, dict):
-                serialized_messages.append(msg)
-            else:
-                serialized_messages.append({
-                    "content": getattr(msg, "content", str(msg)),
-                    "type": getattr(msg, "type", "message")
-                })
+
+        
+        serialized_messages = messages_to_dict(raw_messages)
         return serialized_messages
 
     except Exception as e:
@@ -78,13 +69,9 @@ async def get_user_long_term_memory(user_id: str):
     try:
         store = get_store()
         memories = await store.asearch(("user", str(user_id), "details"))
-        serialized = []
-        for item in memories:
-            serialized.append({
-                "key": getattr(item, "key", ""),
-                "value": getattr(item, "value", {})
-            })
-        return serialized
+        # NOTE: messages_to_dict() does NOT apply here — these are LangGraph
+        # BaseStore memory items, not LangChain message objects.
+        return [{"key": item.key, "value": item.value} for item in memories]
     except Exception as e:
         logger.error("Error retrieving long term memory: %s", e)
         return []

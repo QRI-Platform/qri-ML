@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
-from langchain_core.messages import BaseMessage
-from typing import Annotated, List, Optional, Any
+from langchain_core.messages import AnyMessage
+from typing import Annotated, List, Optional, Any, TypedDict
 from operator import add
 
 
@@ -27,8 +27,8 @@ class ChatOutput(BaseModel):
     memory_value: Optional[str] = Field(default=None, description="Value of user memory item to save or update, else null")
 
 
-class State(BaseModel):
-    messages: Annotated[List[BaseMessage], add] = Field(default_factory=list)
+class State(TypedDict):
+    messages: Annotated[List[AnyMessage], add] = Field(default_factory=list)
     file_paths: List[str] = Field(default_factory=list)
     require_db_search: bool = False
     has_documents: bool = False  # True when Pinecone namespace has vectors for this thread

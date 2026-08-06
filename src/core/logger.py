@@ -29,19 +29,20 @@ def cleanup_logs():
 
 
 def configure_logger():
-    cleanup_logs()
+    cleanup_logs() # cleaning pre-saved logs 
     _logger = logging.getLogger("app")
-    _logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter("[ %(asctime)s ] %(name)s - %(levelname)s - %(message)s")
+    _logger.setLevel(logging.DEBUG) # setting up the logger level to debug
+    formatter = logging.Formatter("[ %(asctime)s ] %(name)s - %(levelname)s - %(message)s") # fixed formate logs saving
 
-    file_handler = RotatingFileHandler(log_file_path, maxBytes=MAX_LOG_SIZE, backupCount=3)
+    file_handler = RotatingFileHandler(log_file_path, maxBytes=MAX_LOG_SIZE, backupCount=3) # maintaining roatioin to delete previous logs automatically and saves exceeding of server storage
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.DEBUG)
 
-    console_handler = logging.StreamHandler()
+    console_handler = logging.StreamHandler() # for console print/output
     console_handler.setFormatter(formatter)
     console_handler.setLevel(logging.INFO)
 
+    # combining file_handler and console loggers in one
     _logger.handlers.clear()
     _logger.addHandler(file_handler)
     _logger.addHandler(console_handler)

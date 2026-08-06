@@ -8,6 +8,8 @@ from src.core.memory import get_checkpointer, get_store
 from src.db.thread_manager import get_thread_manager
 from src.core.memory import init_db_services,close_db_services
 
+
+# initiaing monitoring
 def setup_langsmith():
     cfg = get_app_config()
     if cfg.langsmith_api_key:
@@ -28,6 +30,7 @@ def setup_langsmith():
         logger.info("LangSmith tracing enabled for project: %s", cfg.langsmith_project or "default")
 
 
+# heavy dependencies are preloding here before server start
 def warmup_dependencies():
     logger.info("Warming up all dependencies singletons...")
     _ = get_app_config()
@@ -41,6 +44,8 @@ def warmup_dependencies():
     logger.info("All dependencies singletons warmed up successfully.")
 
 
+
+# connection pool loading and closing for limited connection in neon db ounce the server starts and ends
 async def connection_pool():
     logger.info("Stablishing connection with db")
     await init_db_services()

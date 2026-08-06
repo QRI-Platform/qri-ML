@@ -3,7 +3,7 @@ from pydantic import Field
 from typing import Optional
 from functools import lru_cache
 
-
+# app config to load .env variables witch makes it faster than core os module logic
 class AppConfig(BaseSettings):
     pine_cone_api_key: Optional[str] = Field(None, validation_alias="PINECONE_API_KEY")
     groq_api_key: Optional[str] = Field(None, validation_alias="GROQ_API_KEY")
