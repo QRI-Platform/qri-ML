@@ -49,9 +49,10 @@ An industrial-grade, **fully async**, stateful Multi-Tenant RAG (Retrieval-Augme
 - ✅ **Parallel Pinecone Search** — multiple queries fired simultaneously via `asyncio.gather()`
 - ✅ **Non-Blocking Ingestion** — Docling runs in thread-pool executor, event loop stays free
 - ✅ **Long-Term Memory** — LLM auto-extracts user facts and persists them across all sessions
-- ✅ **Conversation Summarization** — old messages compressed into a summary to stay within context window
+- ✅ **Conversation Summarization** — old messages compressed into a summary to stay within context window; uses `add_messages` reducer to cleanly prune state history
+- ✅ **Single-Call `PydanticOutputParser`** — dynamic schema injection with `{format_instructions}`, avoiding prompt hardcoding and dual-LLM overhead
 - ✅ **Math Tool Calling** — LLM can invoke `solver(expression)` for calculations
-- ✅ **SSE Streaming** — chat responses streamed token-by-token via Server-Sent Events
+- ✅ **Structured SSE Event Streaming** — typed JSON SSE stream (`tool_start`, `tool_end`, `token`, `final`, `error`) parsed via modern Python `match-case`
 - ✅ **Full Swagger Docs** — `/docs` with examples, response schemas, and descriptions
 - ✅ **LangSmith Monitoring** — every node and LLM call traced
 
@@ -345,7 +346,14 @@ Field name: files (repeat for multiple files)
 { "message": "Explain the revenue table from @report.pdf" }
 ```
 
-**Response:** `Content-Type: text/event-stream` — token stream
+**Response:** `Content-Type: text/event-stream` — Industry-standard structured SSE JSON stream:
+
+```text
+data: {"type": "tool_start", "tool": "solver", "input": {"expression": "25 * 4"}}
+data: {"type": "tool_end", "tool": "solver", "output": "100.0"}
+data: {"type": "token", "content": " The result is 100."}
+data: {"type": "final", "ai_response": "The result is 100.", "state": "completed"}
+```
 
 **`@filename` filter:** Mentioning `@report.pdf` restricts Pinecone retrieval to only that file's chunks.
 
@@ -357,7 +365,7 @@ Field name: files (repeat for multiple files)
 |---|---|---|
 | `GET` | `/conversation` | Full conversation history (all LangChain message fields) |
 | `DELETE` | `/conversation` | Delete LangGraph checkpoint for this thread |
-| `DELETE` | `/pine_cone` | Delete Pinecone namespace (vector data) for this thread |
+| `DELETE` | `/pine_cone` | Delete Pinecone namespace for this thread (returns 200 on success, 404 if namespace not found) |
 | `GET` | `/long_term_memory/` | All persisted user memory key-value pairs |
 | `POST` | `/long_term_memory` | Manually add/update a memory key |
 | `DELETE` | `/long_term_memory/{key}` | Delete a single memory key |
