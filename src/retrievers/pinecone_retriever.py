@@ -116,13 +116,18 @@ class Retriever:
             raise MyException(e, sys)
 
     @traceable(name="pinecone_delete_namespace", run_type="chain")
-    async def delete_namespace(self, index_name: str, namespace: str):
+    async def delete_namespace(self, index_name: str, namespace: str) -> bool:
         try:
             logger.info("Deleting namespace %s from index %s", namespace, index_name)
             index = self._pc.Index(index_name)
             index.delete(delete_all=True, namespace=namespace)
             logger.info("Namespace %s deleted successfully", namespace)
+            return True
         except Exception as e:
+            err_msg = str(e).lower()
+            if "not found" in err_msg or "404" in err_msg or "namespace not found" in err_msg:
+                logger.warning("Pinecone namespace %s not found (already deleted or never existed)", namespace)
+                return False
             logger.error("Failed to delete namespace %s", namespace)
             raise MyException(e, sys)
 

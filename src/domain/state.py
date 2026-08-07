@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 from langchain_core.messages import AnyMessage
 from typing import Annotated, List, Optional, Any, TypedDict
-from operator import add
+from langgraph.graph.message import add_messages
 
 
 class OrchastratorOutput(BaseModel):
@@ -28,14 +28,15 @@ class ChatOutput(BaseModel):
 
 
 class State(TypedDict):
-    messages: Annotated[List[AnyMessage], add] = Field(default_factory=list)
-    file_paths: List[str] = Field(default_factory=list)
-    require_db_search: bool = False
-    has_documents: bool = False  # True when Pinecone namespace has vectors for this thread
-    queries: List[str] = Field(default_factory=list)
-    retreived_results: List[Any] = Field(default_factory=list)
-    ai_response: Optional[str] = None
+    messages: Annotated[List[AnyMessage], add_messages]
+    file_paths: List[str]
+    require_db_search: bool
+    has_documents: bool  # True when Pinecone namespace has vectors for this thread
+    queries: List[str]
+    retreived_results: List[Any]
+    ai_response: Optional[str]
 
 
 Orchastrator_output = OrchastratorOutput
 Query_generation_output = QueryGenerationOutput
+

@@ -10,6 +10,7 @@ from api.schemas.chat_schema import ChatRequest
 from api.middlewares.authentication_middleware import authenticate_user
 from src.pipelines.graph_runner_pipeline import get_graph_runner_pipeline
 from typing import Any
+import json
 
 router = APIRouter(dependencies=[Depends(authenticate_user)])
 
@@ -18,22 +19,47 @@ async def stream_chat(message: str, user_id: str, thread_id: str):
     try:
         logger.info("stream_chat started: user=%s thread=%s", user_id, thread_id)
         pipeline = get_graph_runner_pipeline()
-        streamed_any = False
         async for event in pipeline.initiate(user_id=user_id, thread_id=thread_id, message=message):
-            if event["event"] == "on_chat_model_stream":
-                chunk = event["data"].get("chunk")
-                if chunk and getattr(chunk, "content", None):
-                    streamed_any = True
-                    yield str(chunk.content)
-            elif event.get("event") == "on_chain_end" and event.get("name") == "chat_node":
-                output = event.get("data", {}).get("output", {})
-                if isinstance(output, dict) and output.get("ai_response") and not streamed_any:
-                    yield str(output["ai_response"])
+            event_type = event.get("event")
+
+            match event_type:
+                # 1. Tool execution start (e.g. solver tool requested)
+                case "on_tool_start":
+                    tool_name = event.get("name")
+                    tool_input = event.get("data", {}).get("input")
+                    payload = json.dumps({"type": "tool_start", "tool": tool_name, "input": tool_input})
+                    yield f"data:{payload}\n\n"
+
+                # 2. Tool execution end (tool completed)
+                case "on_tool_end":
+                    tool_name = event.get("name")
+                    tool_output = str(event.get("data", {}).get("output"))
+                    payload = json.dumps({"type": "tool_end", "tool": tool_name, "output": tool_output})
+                    yield f"data:{payload}\n\n"
+
+                # 3. Model token stream
+                case "on_chat_model_stream":
+                    chunk = event.get("data", {}).get("chunk")
+                    if chunk and getattr(chunk, "content", None):
+                        payload = json.dumps({"type": "token", "content": chunk.content})
+                        yield f"data:{payload}\n\n"
+
+                # 4. Final chain completed
+                case "on_chain_end" if event.get("name") == "chat_node":
+                    output = event.get("data", {}).get("output", {})
+                    if isinstance(output, dict) and output.get("ai_response"):
+                        ai_response = output.get("ai_response")
+                        payload = json.dumps({"type": "final", "ai_response": ai_response, "state": "completed"})
+                        yield f"data:{payload}\n\n"
+
+                case _:
+                    pass
+
         logger.info("stream_chat completed: user=%s thread=%s", user_id, thread_id)
     except Exception as e:
         logger.error("stream_chat error: %s", str(e))
-        raise HTTPException(status_code=400, detail={"success": False, "message": str(e), "data": None})
-
+        err_payload = json.dumps({"type": "error", "message": str(e)})
+        yield f"data:{err_payload}\n\n"
 
 @router.post(
     "/ingest",

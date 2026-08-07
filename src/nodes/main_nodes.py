@@ -19,15 +19,18 @@ from langsmith import traceable
 from typing import Optional,List,Optional
 from langchain_core.messages import HumanMessage
 from src.tools.solver_tool import solver
+from langchain_core.output_parsers import PydanticOutputParser
+
 import re
 
 @traceable(name="ingestion_node", run_type="chain")
 async def ingestion_node(state: State, config: RunnableConfig):
     try:
         thread_id = config["configurable"]["thread_id"]
-        logger.info("ingestion_node started for thread=%s, files=%d", thread_id, len(state.file_paths))
+        file_paths = state.get("file_paths", [])
+        logger.info("ingestion_node started for thread=%s, files=%d", thread_id, len(file_paths))
         data_ingestion_config = DataIngestionConfig(
-            files_path=state.file_paths,
+            files_path=file_paths,
             namespace=thread_id,
         )
         retriever_config = RetrieverConfig(namespace=thread_id)
@@ -65,7 +68,7 @@ async def orchastrator_node(state: State, config: RunnableConfig) -> dict:
 
         llm = get_llm()
         structured_llm = llm.with_structured_output(OrchastratorOutput)
-        prompt_input = ORCHESTRATOR_PROMPT.invoke({"messages": state.messages,"has_documents": has_documents})
+        prompt_input = ORCHESTRATOR_PROMPT.invoke({"messages": state.get("messages", []),"has_documents": has_documents})
         result = await structured_llm.ainvoke(prompt_input)
 
         logger.info("Orchestrator LLM decision: require_db_search=%s", result.require_db_search)
@@ -87,7 +90,7 @@ async def query_generation_node(state: State) -> dict:
         llm = get_llm()
         structured_llm = llm.with_structured_output(QueryGenerationOutput)
         
-        prompt_input = QUERY_GENERATION_PROMPT.invoke({"messages": state.messages})
+        prompt_input = QUERY_GENERATION_PROMPT.invoke({"messages": state.get("messages", [])})
         result = await structured_llm.ainvoke(prompt_input)
         
         logger.info("Generated %d queries", len(result.queries))
@@ -101,7 +104,9 @@ async def query_generation_node(state: State) -> dict:
 async def retreiver_node(state: State, config: RunnableConfig):
     try:
         thread_id = config["configurable"]["thread_id"]
-        logger.info("retreiver_node started, queries=%d", len(state.queries))
+        queries = state.get("queries", [])
+        messages = state.get("messages", [])
+        logger.info("retreiver_node started, queries=%d", len(queries))
         retriever_config = RetrieverConfig(namespace=thread_id)
         retriever = get_retriever(retriever_config=retriever_config)
         vector_store = await retriever.create_retriever()
@@ -109,8 +114,8 @@ async def retreiver_node(state: State, config: RunnableConfig):
         filters: Optional[List[str]] = None
         # Match @filename.ext patterns the user typed in chat, e.g. @report.pdf
         pattern = r'@(\w+\.(?:pdf|txt|docx|doc))'
-        if isinstance(state.messages[-1], HumanMessage):
-            raw_mentions = re.findall(pattern, state.messages[-1].content)
+        if messages and isinstance(messages[-1], HumanMessage):
+            raw_mentions = re.findall(pattern, messages[-1].content)
             if raw_mentions:
                 # Filenames are stored in Pinecone as "{thread_id}_{original_filename}"
                 # during ingestion (see DataIngestion._inject_filename_metadata).
@@ -129,7 +134,7 @@ async def retreiver_node(state: State, config: RunnableConfig):
             retriever.get_similar_documents(
                 vector_store=vector_store, query=query, filter=filters
             )
-            for query in state.queries
+            for query in queries
         ]
         gathered = await asyncio.gather(*search_tasks)
         for docs in gathered:
@@ -141,46 +146,61 @@ async def retreiver_node(state: State, config: RunnableConfig):
         raise MyException(e, sys)
 
 
+
+
 @traceable(name="chat_node", run_type="chain")
 async def chat_node(state: State, config: RunnableConfig, store: BaseStore):
     try:
           # local import to avoid circulars
 
         user_id = config.get("configurable", {}).get("user_id", "unknown")
-        logger.info("chat_node started for user=%s, messages_count=%d", user_id, len(state.messages))
+        messages = state.get("messages", [])
+        retreived_results = state.get("retreived_results", [])
+        logger.info("chat_node started for user=%s, messages_count=%d", user_id, len(messages))
 
         # Long term memory retrieve
         lsm = await store.asearch(("user", str(user_id), "details"))
         user_memories = "\n".join([f"- {item.key}: {item.value.get('data')}" for item in lsm if item.value]) if lsm else "None"
 
         # Context & summary preparation
-        context = "\n\n".join([doc.page_content for doc in state.retreived_results]) if state.retreived_results else "None"
+        context = "\n\n".join([doc.page_content for doc in retreived_results]) if retreived_results else "None"
+
+        # Dynamic output parser for ChatOutput schema
+        chat_parser = PydanticOutputParser(pydantic_object=ChatOutput)
 
         # Invoke Prompt Template directly
         prompt_input = CHAT_PROMPT.invoke({
             "user_memories": user_memories,
             "context": context,
-            "messages": state.messages,
-            "max_words": LLM_OUTPUT_MAX_WORDS
+            "messages": messages,
+            "max_words": LLM_OUTPUT_MAX_WORDS,
+            "format_instructions": chat_parser.get_format_instructions(),
         })
 
-        # Bind tools, then layer structured-output with include_raw=True so we
-        # keep access to .tool_calls on the raw AIMessage. branches:
-        #   - result["parsed"] populated  -> final answer (handle memory, return ai_response)
-        #   - result["parsed"] is None   -> tool was called; let tools_condition route to tool_node
+        # Single LLM call with bound tools
         llm = get_llm().bind_tools([solver])
-        unified_model = llm.with_structured_output(
-            ChatOutput,
-            method="json_schema",
-            include_raw=True,
-            strict=True,
-        )
-        result = await unified_model.ainvoke(prompt_input)
-        raw_msg: AIMessage = result["raw"]
-        parsed_output: Optional[ChatOutput] = result.get("parsed")
+        raw_msg: AIMessage = await llm.ainvoke(prompt_input)
+
+        tool_calls = getattr(raw_msg, "tool_calls", []) or []
+        if tool_calls:
+            # Tool-calling turn: let tools_condition route to tool_node
+            logger.info("chat_node routed to tool_node (tool_calls=%d)", len(tool_calls))
+            return {"messages": [raw_msg]}
+
+        # Parse structured output from LLM response content
+        parsed_output: Optional[ChatOutput] = None
+        content_str = raw_msg.content if isinstance(raw_msg.content, str) else str(raw_msg.content)
+        try:
+            parsed_output = chat_parser.parse(content_str)
+        except Exception:
+            try:
+                cleaned_str = re.sub(r"^```(?:json)?\s*|\s*```$", "", content_str.strip(), flags=re.MULTILINE)
+                parsed_output = chat_parser.parse(cleaned_str)
+            except Exception as pe:
+                logger.warning("Failed to parse ChatOutput via PydanticOutputParser: %s", str(pe))
 
         if parsed_output is not None:
-            # Final structured turn
+            response_text = parsed_output.response
             if parsed_output.memory_key and parsed_output.memory_value and parsed_output.memory_key.lower() not in ["null", "none"]:
                 key_name = parsed_output.memory_key.strip().lower().replace(" ", "_")
                 logger.info("Storing long-term memory for user %s: %s = %s", user_id, key_name, parsed_output.memory_value)
@@ -189,13 +209,11 @@ async def chat_node(state: State, config: RunnableConfig, store: BaseStore):
                     key=key_name,
                     value={"data": parsed_output.memory_value.strip()},
                 )
+        else:
+            response_text = content_str
 
-            return {"messages": [raw_msg], "ai_response": parsed_output.response}
-
-        # Tool-calling turn: raw_msg carries .tool_calls. tools_condition in
-        # builder.py will route to tool_node; tool_node results come back here.
-        logger.info("chat_node routed to tool_node (tool_calls=%d)", len(getattr(raw_msg, "tool_calls", []) or []))
-        return {"messages": [raw_msg]}
+        clean_msg = AIMessage(content=response_text)
+        return {"messages": [clean_msg], "ai_response": response_text}
     except Exception as e:
         logger.error("chat_node failed: %s", str(e))
         raise MyException(e, sys)

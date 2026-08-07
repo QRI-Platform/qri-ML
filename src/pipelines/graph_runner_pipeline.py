@@ -20,12 +20,10 @@ class GraphRunnerPipeline(Pipeline):
         try:
             logger.info("Pipeline.initiate called: user=%s thread=%s files=%d message=%s",
                         user_id, thread_id, len(file_paths or []), bool(message))
-            state = State(
-                file_paths=file_paths or [],
-            )
-
-            if message:
-                state.messages.append(HumanMessage(content=message))
+            state = {
+                "file_paths": file_paths or [],
+                "messages": [HumanMessage(content=message)] if message else []
+            }
 
             config = {"configurable": {"thread_id": thread_id, "user_id": user_id}}
             logger.debug("Streaming graph events with config=%s", config)

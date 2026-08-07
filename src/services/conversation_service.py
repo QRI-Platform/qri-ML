@@ -18,13 +18,14 @@ async def delete_thread_data(thread_id: str, delay_seconds: int = 0):
     logger.info("delete_thread_data: cleanup complete for thread %s", thread_id)
 
 
-async def delete_pinecone_namespace(thread_id: str):
+async def delete_pinecone_namespace(thread_id: str) -> bool:
     try:
         retriever_config = RetrieverConfig(namespace=thread_id)
         retriever = get_retriever(retriever_config=retriever_config)
-        await retriever.delete_namespace(index_name=DEFAULT_INDEX_NAME, namespace=thread_id)
+        return await retriever.delete_namespace(index_name=DEFAULT_INDEX_NAME, namespace=thread_id)
     except Exception as e:
         logger.error("Failed to delete Pinecone namespace %s: %s", thread_id, e)
+        return False
 
 
 @traceable(name="load_conversation", run_type="chain")
@@ -52,7 +53,7 @@ async def load_conversation(thread_id: str, user_id: str):
 async def delete_user_conversation(thread_id: str, user_id: str):
     try:
         cp = get_checkpointer()
-        state = await cp.aget_tuple(config={"configurable": {"thread_id": thread_id}})
+        state = await cp.aget_tuple(config={"configurable": {"thread_id": thread_id,"user_id":user_id}})
         if state is None:
             logger.info("Thread %s not found, nothing to delete.", thread_id)
             return False

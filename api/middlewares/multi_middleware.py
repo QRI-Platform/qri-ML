@@ -28,7 +28,6 @@ async def multer_middleware(
 
         dest_dir = os.path.join(PUBLIC_TEMP_DIR, str(thread_id))
         os.makedirs(dest_dir, exist_ok=True)
-
         for file in files:
             if not file or not file.filename:
                 continue

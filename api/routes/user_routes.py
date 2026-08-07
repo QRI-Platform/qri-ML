@@ -98,9 +98,12 @@ async def delete_thread_endpoint(request: Request):
     """
     try:
         logger.info("delete endpoint: user=%s thread=%s", request.state.user_id, request.state.thread_id)
-        await delete_pinecone_namespace(request.state.thread_id)
-        logger.info("delete endpoint: completed for thread=%s", request.state.thread_id)
-        return JSONResponse(content={"success": True, "message": "Thread deleted successfully", "data": None}, status_code=200)
+        deleted = await delete_pinecone_namespace(request.state.thread_id)
+        if deleted:
+            logger.info("delete endpoint: completed for thread=%s", request.state.thread_id)
+            return JSONResponse(content={"success": True, "message": "Thread deleted successfully", "data": None}, status_code=200)
+        else:
+            return JSONResponse(content={"success": False, "message": "Namespace found in Pinecone", "data": None}, status_code=404)
     except Exception as e:
         logger.error("delete endpoint failed: %s", str(e))
         raise HTTPException(status_code=400, detail={"success": False, "message": str(e), "data": None})

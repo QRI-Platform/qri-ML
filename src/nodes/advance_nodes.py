@@ -19,7 +19,7 @@ async def summerizer(state: State, config: RunnableConfig):
         thread_id = config.get("configurable", {}).get("thread_id", "unknown")
         logger.info("summerizer node started for thread=%s", thread_id)
         
-        messages = state.messages
+        messages = state.get("messages", [])
 
         # Check if we have enough messages to trim/summarize
         if len(messages) <= NO_OF_LAST_MESSAGES_TO_KEEP:
