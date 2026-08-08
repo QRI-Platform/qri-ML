@@ -1,0 +1,20 @@
+name: Test Code
+
+on:
+  push:
+    branches: [ "main" ]
+  
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/setup-python@v6
+      with:
+        python-version: "3.14"
+        cache: "uv"
+    - name: Running Pytest
+      run: uv run pytest -v
