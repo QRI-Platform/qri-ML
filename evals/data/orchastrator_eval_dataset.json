@@ -1,0 +1,42 @@
+[
+    {
+        "inputs": {"question": "Hi, how are you doing today?", "has_documents": false},
+        "outputs": {"require_db_search": false}
+    },
+    {
+        "inputs": {"question": "What is our company's refund policy for subscription plans?", "has_documents": true},
+        "outputs": {"require_db_search": true}
+    },
+    {
+        "inputs": {"question": "Can you summarize the main differences between Python lists and tuples?", "has_documents": false},
+        "outputs": {"require_db_search": false}
+    },
+    {
+        "inputs": {"question": "How do I configure OAuth2 authentication in our internal API service?", "has_documents": true},
+        "outputs": {"require_db_search": true}
+    },
+    {
+        "inputs": {"question": "Convert this string to uppercase: 'hello world'", "has_documents": false},
+        "outputs": {"require_db_search": false}
+    },
+    {
+        "inputs": {"question": "Who is our current account manager for Client XYZ?", "has_documents": true},
+        "outputs": {"require_db_search": true}
+    },
+    {
+        "inputs": {"question": "Write a python function to check if a number is prime.", "has_documents": false},
+        "outputs": {"require_db_search": false}
+    },
+    {
+        "inputs": {"question": "What were our Q2 revenue figures according to the internal report?", "has_documents": true},
+        "outputs": {"require_db_search": true}
+    },
+    {
+        "inputs": {"question": "Thanks! That helped a lot.", "has_documents": false},
+        "outputs": {"require_db_search": false}
+    },
+    {
+        "inputs": {"question": "How do I setup my dev environment according to company onboarding docs?", "has_documents": true},
+        "outputs": {"require_db_search": true}
+    }
+]
