@@ -16,13 +16,14 @@ class GraphRunnerPipeline(Pipeline):
         logger.info("GraphRunnerPipeline initialized")
 
     @traceable(name="GraphRunnerPipeline.initiate", run_type="chain")
-    async def initiate(self, user_id: str, thread_id: str, file_paths: list = None, message: str = None):
+    async def initiate(self, user_id: str, thread_id: str, file_paths: list = None, message: str = None,has_documents:bool=False):
         try:
             logger.info("Pipeline.initiate called: user=%s thread=%s files=%d message=%s",
                         user_id, thread_id, len(file_paths or []), bool(message))
             state = {
                 "file_paths": file_paths or [],
-                "messages": [HumanMessage(content=message)] if message else []
+                "messages": [HumanMessage(content=message)] if message else [],
+                "has_documents":has_documents
             }
 
             config = {"configurable": {"thread_id": thread_id, "user_id": user_id}}
