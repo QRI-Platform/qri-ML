@@ -1,0 +1,77 @@
+[
+  {
+    "inputs": {
+      "question": "What is the capital of France?",
+      "retreived_results": [],
+      "user_memories": {}
+    },
+    "reference_outputs": {
+      "has_tool_call": false,
+      "ai_response": "The capital of France is Paris."
+    }
+  },
+  {
+    "inputs": {
+      "question": "Based on our company policy document, what is the standard notice period?",
+      "retreived_results": [
+        "Section 4.2: The standard employee notice period is 30 days for full-time employees."
+      ],
+      "user_memories": {}
+    },
+    "reference_outputs": {
+      "has_tool_call": false,
+      "ai_response": "According to the company policy document, the standard notice period for full-time employees is 30 days."
+    }
+  },
+  {
+    "inputs": {
+      "question": "Can you calculate the root of 4x^2 + 12x + 9 = 0 using the solver tool?",
+      "retreived_results": [],
+      "user_memories": {}
+    },
+    "reference_outputs": {
+      "has_tool_call": true,
+      "ai_response": ""
+    }
+  },
+  {
+    "inputs": {
+      "question": "What is my favorite programming language that I told you earlier?",
+      "retreived_results": [],
+      "user_memories": {
+        "preferred_language": "Python"
+      }
+    },
+    "reference_outputs": {
+      "has_tool_call": false,
+      "ai_response": "Your favorite programming language is Python."
+    }
+  },
+  {
+    "inputs": {
+      "question": "What are the final results?",
+      "messages": [
+        {
+          "type": "human",
+          "content": "Solve 2x + 6 = 12"
+        },
+        {
+          "type": "ai",
+          "content": "",
+          "tool_calls": [{"name": "solver", "args": {"equation": "2x + 6 = 12"}, "id": "call_1"}]
+        },
+        {
+          "type": "tool",
+          "content": "x = 3",
+          "tool_call_id": "call_1"
+        }
+      ],
+      "retreived_results": [],
+      "user_memories": {}
+    },
+    "reference_outputs": {
+      "has_tool_call": false,
+      "ai_response": "The solution to the equation 2x + 6 = 12 is x = 3."
+    }
+  }
+]
