@@ -7,8 +7,7 @@ from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_core.documents import Document
 from langchain_core.runnables import RunnableConfig
 from langgraph.store.memory import InMemoryStore
-from langchain_ollama import ChatOllama
-from langchain_groq import ChatGroq
+from evals.common import get_llm
 from langchain_core.prompts import ChatPromptTemplate
 from langsmith.evaluation import EvaluationResult
 from src.core.logger import logger
@@ -136,7 +135,7 @@ async def eval_generator(inputs: dict, outputs: dict, reference_outputs: dict) -
         actual_response = outputs.get("ai_response", "")
 
         # llm = ChatOllama(model="qwen2.5-coder:3b", temperature=0.0)
-        llm = ChatGroq(model="openai/gpt-oss-120b",temperature=0.0)
+        llm = get_llm()
         prompt = ChatPromptTemplate.from_template(
             """You are an accurate AI evaluation judge.
 Compare the generated LLM response with the expected reference response.
