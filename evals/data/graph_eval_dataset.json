@@ -1,0 +1,64 @@
+[
+  {
+    "inputs": {
+      "question": "What is the capital of France?",
+      "has_documents": false,
+      "user_memories": {}
+    },
+    "reference_outputs": {
+      "require_db_search": false,
+      "has_tool_call": false,
+      "ai_response": "The capital of France is Paris."
+    }
+  },
+  {
+    "inputs": {
+      "question": "What is the core architectural innovation proposed in the 'Attention Is All You Need' paper?",
+      "has_documents": true,
+      "user_memories": {}
+    },
+    "reference_outputs": {
+      "require_db_search": true,
+      "has_tool_call": false,
+      "ai_response": "The core innovation is the Transformer architecture, which relies entirely on self-attention mechanisms without recurrent neural networks or convolutions."
+    }
+  },
+  {
+    "inputs": {
+      "question": "How many layers are present in the encoder and decoder stacks of the base Transformer model according to the paper?",
+      "has_documents": true,
+      "user_memories": {}
+    },
+    "reference_outputs": {
+      "require_db_search": true,
+      "has_tool_call": false,
+      "ai_response": "The base Transformer model consists of N = 6 identical layers in the encoder and N = 6 identical layers in the decoder."
+    }
+  },
+  {
+    "inputs": {
+      "question": "Can you solve the equation 2x + 6 = 12 using the solver tool?",
+      "has_documents": false,
+      "user_memories": {}
+    },
+    "reference_outputs": {
+      "require_db_search": false,
+      "has_tool_call": true,
+      "ai_response": "The solution to the equation 2x + 6 = 12 is x = 3."
+    }
+  },
+  {
+    "inputs": {
+      "question": "What is my favorite programming language that I told you earlier?",
+      "has_documents": false,
+      "user_memories": {
+        "preferred_language": "Python"
+      }
+    },
+    "reference_outputs": {
+      "require_db_search": false,
+      "has_tool_call": false,
+      "ai_response": "Your favorite programming language is Python."
+    }
+  }
+]

@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_core.documents import Document
-from evals.common import get_llm()
+from evals.common import get_llm
 from langchain_core.prompts import ChatPromptTemplate
 from langsmith.evaluation import EvaluationResult
 

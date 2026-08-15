@@ -35,3 +35,15 @@ class RetreiverEvalConfig:
     dataset_name: str = "retriever_eval_dataset"
     eval_name: str = "retriever_chunk_match_eval"
     max_concurrency: int = 2
+
+@dataclass
+class GraphEvalConfig:
+    index_name: str = "eval-retriever"
+    file_paths: List[str] = field(
+        default_factory=lambda: ["evals/data/transformer.pdf"]
+    )
+    thread_id: str = "eval_graph_thread"
+    dataset_name: str = "graph_eval_dataset"
+    dataset_path: str = str((Path(__file__).parent / "data" / "graph_eval_dataset.json").resolve())
+    eval_name: str = "complete_graph_eval"
+    max_concurrency: int = 2
