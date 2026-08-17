@@ -1,9 +1,10 @@
 from langchain_ollama import ChatOllama
+
 from functools import lru_cache
 
 @lru_cache()
 def get_llm():
     return ChatOllama(
-    model = "openai/gpt-oss-120b",
+    model = "qwen2.5-coder:3b",
     temperature=0.0
     )

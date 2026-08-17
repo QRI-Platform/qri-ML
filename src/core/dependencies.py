@@ -30,11 +30,30 @@ def setup_langsmith():
         logger.info("LangSmith tracing enabled for project: %s", cfg.langsmith_project or "default")
 
 
+def setup_langfuse():
+    cfg = get_app_config()
+    if cfg.langfuse_public_key:
+        os.environ["LANGFUSE_PUBLIC_KEY"] = cfg.langfuse_public_key
+    if cfg.langfuse_secret_key:
+        os.environ["LANGFUSE_SECRET_KEY"] = cfg.langfuse_secret_key
+    if cfg.langfuse_host:
+        os.environ["LANGFUSE_HOST"] = cfg.langfuse_host
+    if cfg.langfuse_base_url:
+        os.environ["LANGFUSE_BASE_URL"] = cfg.langfuse_base_url
+    logger.info("Langfuse environment monitoring configured.")
+
+
+# Automatically configure environment variables from AppConfig on module load
+setup_langsmith()
+setup_langfuse()
+
+
 # heavy dependencies are preloding here before server start
 def warmup_dependencies():
     logger.info("Warming up all dependencies singletons...")
     _ = get_app_config()
     _ = setup_langsmith()
+    _ = setup_langfuse()
     _ = get_llm()
     _ = get_embeddings()
     _ = get_pinecone_client()

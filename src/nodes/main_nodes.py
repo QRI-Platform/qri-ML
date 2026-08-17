@@ -15,7 +15,7 @@ from langgraph.store.base import BaseStore
 from src.prompts.templates import QUERY_GENERATION_PROMPT, ORCHESTRATOR_PROMPT, CHAT_PROMPT, SUMMARY_NODE_PROMPT
 from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, LENGTH_OF_SUMMARY_GENERATED, MINIMUM_LENGTH_OF_LONG_TERM_MEMORY, DEFAULT_INDEX_NAME, LLM_OUTPUT_MAX_WORDS
 from src.domain.state import State, QueryGenerationOutput, OrchastratorOutput, ChatOutput
-from langsmith import traceable
+from langfuse import observe
 from typing import Optional,List,Optional
 from langchain_core.messages import HumanMessage
 from src.tools.solver_tool import solver
@@ -23,7 +23,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 
 import re
 
-@traceable(name="ingestion_node", run_type="chain")
+@observe(name="ingestion_node")
 async def ingestion_node(state: State, config: RunnableConfig):
     try:
         thread_id = config["configurable"]["thread_id"]
@@ -47,7 +47,7 @@ async def ingestion_node(state: State, config: RunnableConfig):
         raise MyException(e, sys)
 
 
-@traceable(name="orchastrator_node", run_type="chain")
+@observe(name="orchastrator_node")
 async def orchastrator_node(state: State, config: RunnableConfig) -> dict:
     try:
         logger.info("orchastrator_node started")
@@ -83,7 +83,7 @@ async def orchastrator_node(state: State, config: RunnableConfig) -> dict:
         raise MyException(e, sys)
 
 
-@traceable(name="query_generation_node", run_type="chain")
+@observe(name="query_generation_node")
 async def query_generation_node(state: State) -> dict:
     try:
         logger.info("query_generation_node started")
@@ -100,7 +100,7 @@ async def query_generation_node(state: State) -> dict:
         raise MyException(e, sys)
 
 
-@traceable(name="retreiver_node", run_type="chain")
+@observe(name="retreiver_node")
 async def retreiver_node(state: State, config: RunnableConfig):
     try:
         thread_id = config["configurable"]["thread_id"]
@@ -148,7 +148,7 @@ async def retreiver_node(state: State, config: RunnableConfig):
 
 
 
-@traceable(name="chat_node", run_type="chain")
+@observe(name="chat_node")
 async def chat_node(state: State, config: RunnableConfig, store: BaseStore):
     try:
           # local import to avoid circulars

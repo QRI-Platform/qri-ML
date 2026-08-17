@@ -4,9 +4,8 @@ from pydantic import BaseModel, Field
 
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_core.documents import Document
-from evals.common import get_llm
+from evals.common import get_llm, EvaluationResult
 from langchain_core.prompts import ChatPromptTemplate
-from langsmith.evaluation import EvaluationResult
 
 from src.core.logger import logger
 from src.core.exceptions import MyException
@@ -78,12 +77,16 @@ async def eval_rag_target(inputs: dict) -> dict:
         raise MyException(e, sys)
 
 
-async def eval_rag(inputs: dict, outputs: dict, reference_outputs: dict) -> EvaluationResult:
+async def eval_rag(input: dict = None, output: dict = None, expected_output: dict = None, **kwargs) -> EvaluationResult:
     """Evaluator function comparing retrieved documents against ground truth."""
     try:
-        got_results = outputs.get("retreived_results", [])
-        expected_response = reference_outputs.get("expected_retreiver_response", "")
-        question = inputs.get("question", "")
+        inp = input or kwargs.get("inputs", {})
+        out = output or kwargs.get("outputs", {})
+        exp = expected_output or kwargs.get("reference_outputs", {})
+
+        got_results = out.get("retreived_results", [])
+        expected_response = exp.get("expected_retreiver_response", "")
+        question = inp.get("question", "")
 
         # Format all retrieved chunks into a numbered context block
         retrieved_context = "\n\n---\n\n".join(
@@ -120,8 +123,8 @@ Evaluation Instructions:
         })
 
         return EvaluationResult(
-            key="retriever_accuracy",
-            score=judge_result.score,
+            name="retriever_accuracy",
+            value=judge_result.score,
             comment=judge_result.reasoning,
             metadata={
                 "retrieved_chunks_count": len(got_results),
@@ -132,7 +135,7 @@ Evaluation Instructions:
     except Exception as e:
         logger.error("Error in eval_rag evaluator: %s", str(e), exc_info=True)
         return EvaluationResult(
-            key="retriever_accuracy",
-            score=0.0,
+            name="retriever_accuracy",
+            value=0.0,
             comment=f"Evaluator exception: {str(e)}",
         )

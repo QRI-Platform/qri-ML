@@ -11,7 +11,7 @@ from src.core.config import get_app_config
 from src.retrievers.pinecone_client import get_pinecone_client
 from src.embeddings.embedding_loader import get_embeddings
 from src.domain.config_entities import RetrieverConfig
-from langsmith import traceable
+from langfuse import observe
 
 _verified_indexes = set()
 
@@ -41,7 +41,7 @@ class Retriever:
             doc.metadata = sanitized
         return documents
 
-    @traceable(name="pinecone_create_retriever", run_type="chain")
+    @observe(name="pinecone_create_retriever")
     async def create_retriever(self):
         try:
             index_name = self.retriever_config.index_name
@@ -75,7 +75,7 @@ class Retriever:
             logger.error("Failed to create vector store retriever")
             raise MyException(e, sys)
 
-    @traceable(name="pinecone_add_documents", run_type="retriever")
+    @observe(name="pinecone_add_documents")
     async def add_documents(self, vector_store: PineconeVectorStore, documents: List[Document]):
         try:
             logger.info("Adding %d documents to vector store", len(documents))
@@ -86,7 +86,7 @@ class Retriever:
             logger.error("Failed to add documents to vector store")
             raise MyException(e, sys)
 
-    @traceable(name="pinecone_similarity_search", run_type="retriever")
+    @observe(name="pinecone_similarity_search")
     async def get_similar_documents(
         self,
         vector_store: PineconeVectorStore,
@@ -115,7 +115,7 @@ class Retriever:
             logger.error("Similarity search failed")
             raise MyException(e, sys)
 
-    @traceable(name="pinecone_delete_namespace", run_type="chain")
+    @observe(name="pinecone_delete_namespace")
     async def delete_namespace(self, index_name: str, namespace: str) -> bool:
         try:
             logger.info("Deleting namespace %s from index %s", namespace, index_name)

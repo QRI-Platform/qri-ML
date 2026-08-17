@@ -10,10 +10,10 @@ from langchain_core.messages import RemoveMessage, HumanMessage,SystemMessage
 from src.domain.config_entities import RetrieverConfig
 from langchain_core.runnables import RunnableConfig
 from src.core.constants import LENGTH_OF_SUMMARY_GENERATED as NO_OF_WORDS_TO_SUMMARIZE
-from langsmith import traceable
+from langfuse import observe
 
 
-@traceable(name="summerizer_node", run_type="chain")
+@observe(name="summerizer_node")
 async def summerizer(state: State, config: RunnableConfig):
     try:
         thread_id = config.get("configurable", {}).get("thread_id", "unknown")

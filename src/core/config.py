@@ -13,6 +13,10 @@ class AppConfig(BaseSettings):
     langsmith_project: Optional[str] = Field(None, validation_alias="LANGCHAIN_PROJECT")
     langsmith_endpoint: Optional[str] = Field("https://api.smith.langchain.com", validation_alias="LANGCHAIN_ENDPOINT")
     langsmith_tracing: Optional[bool] = Field(True, validation_alias="LANGCHAIN_TRACING_V2")
+    langfuse_secret_key: Optional[str] = Field(None, validation_alias="LANGFUSE_SECRET_KEY")
+    langfuse_public_key: Optional[str] = Field(None, validation_alias="LANGFUSE_PUBLIC_KEY")
+    langfuse_base_url: Optional[str] = Field(None, validation_alias="LANGFUSE_BASE_URL")
+    langfuse_host: Optional[str] = Field(None, validation_alias="LANGFUSE_HOST")
     model_config = SettingsConfigDict(
         env_file=".env",
         env_ignore_empty=True,

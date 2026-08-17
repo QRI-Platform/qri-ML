@@ -5,7 +5,7 @@ from src.domain.config_entities import RetrieverConfig
 from src.retrievers.pinecone_retriever import get_retriever
 from src.core.memory import get_checkpointer, get_store
 from src.graphs.builder import get_graph
-from langsmith import traceable
+from langfuse import observe
 from langchain_core.messages import messages_to_dict
 
 
@@ -28,7 +28,7 @@ async def delete_pinecone_namespace(thread_id: str) -> bool:
         return False
 
 
-@traceable(name="load_conversation", run_type="chain")
+@observe(name="load_conversation")
 async def load_conversation(thread_id: str, user_id: str):
     try:
         cp = get_checkpointer()
@@ -49,7 +49,7 @@ async def load_conversation(thread_id: str, user_id: str):
         return []
 
 
-@traceable(name="delete_user_conversation", run_type="chain")
+@observe(name="delete_user_conversation")
 async def delete_user_conversation(thread_id: str, user_id: str):
     try:
         cp = get_checkpointer()
@@ -65,7 +65,7 @@ async def delete_user_conversation(thread_id: str, user_id: str):
         return False
 
 
-@traceable(name="get_user_long_term_memory", run_type="chain")
+@observe(name="get_user_long_term_memory")
 async def get_user_long_term_memory(user_id: str):
     try:
         store = get_store()
