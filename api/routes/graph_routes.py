@@ -37,12 +37,26 @@ async def stream_chat(message: str, user_id: str, thread_id: str):
                     payload = json.dumps({"type": "tool_end", "tool": tool_name, "output": tool_output})
                     yield f"data:{payload}\n\n"
 
-                # 3. Model token stream
+                # 3. Model token stream (only stream tokens from chat_node to the user UI)
                 case "on_chat_model_stream":
+                    langgraph_node = event.get("metadata", {}).get("langgraph_node")
+                    # Ignore internal background node LLM streams (e.g. orchastrator_node, summary_node, query_generation_node)
+                    if langgraph_node and langgraph_node != "chat_node":
+                        continue
+
                     chunk = event.get("data", {}).get("chunk")
-                    if chunk and getattr(chunk, "content", None):
-                        payload = json.dumps({"type": "token", "content": chunk.content})
-                        yield f"data:{payload}\n\n"
+                    if chunk:
+                        reasoning = (
+                            chunk.additional_kwargs.get("reasoning_content")
+                            or chunk.additional_kwargs.get("reasoning")
+                            or chunk.additional_kwargs.get("thinking")
+                        )
+                        if reasoning:
+                            payload = json.dumps({"type": "reasoning", "content": reasoning})
+                            yield f"data:{payload}\n\n"
+                        elif getattr(chunk, "content", None):
+                            payload = json.dumps({"type": "token", "content": chunk.content})
+                            yield f"data:{payload}\n\n"
 
                 # 4. Final chain completed
                 case "on_chain_end" if event.get("name") == "chat_node":

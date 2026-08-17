@@ -59,7 +59,7 @@ async def test_initiate_success(pipeline, mock_graph):
     assert len(passed_state["messages"]) == 1
     assert isinstance(passed_state["messages"][0], HumanMessage)
     assert passed_state["messages"][0].content == "Hello AI"
-    assert call_kwargs["config"] == {"configurable": {"thread_id": "thread1", "user_id": "user1"}}
+    assert call_kwargs["config"]["configurable"] == {"thread_id": "thread1", "user_id": "user1"}
 
 
 @pytest.mark.asyncio

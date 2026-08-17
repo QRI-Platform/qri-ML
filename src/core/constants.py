@@ -12,7 +12,7 @@ NAMESPACE = None
 
 
 # ============== LLM ===================================
-LLM_MODEL_NAME: str = "llama-3.3-70b-versatile"
+LLM_MODEL_NAME: str = "openai/gpt-oss-20b"
 
 
 

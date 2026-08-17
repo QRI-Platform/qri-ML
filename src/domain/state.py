@@ -22,16 +22,14 @@ class QueryGenerationOutput(BaseModel):
 
 
 class ChatOutput(BaseModel):
-    response: str = Field(description="Answer to the user")
-    memory_key: Optional[str] = Field(default=None, description="Key of user memory item to save or update if user provided key details or preferences, else null")
-    memory_value: Optional[str] = Field(default=None, description="Value of user memory item to save or update, else null")
-
+    response: str = Field(description="Answer to the user strictly in markdown formate including emojis if needed")
+    
 
 class State(TypedDict):
     messages: Annotated[List[AnyMessage], add_messages]
     file_paths: List[str]
     require_db_search: bool
-    has_documents: bool  # True when Pinecone namespace has vectors for this thread
+    has_documents: bool = False  # True when Pinecone namespace has vectors for this thread
     queries: List[str]
     retreived_results: List[Any]
     ai_response: Optional[str]

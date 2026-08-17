@@ -4,6 +4,10 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.store.postgres.aio import AsyncPostgresStore
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.store.base import BaseStore
+from langgraph.store.base.batch import AsyncBatchedBaseStore
+
+if not hasattr(AsyncBatchedBaseStore, "_task"):
+    AsyncBatchedBaseStore._task = None
 
 from src.core.logger import logger
 from src.core.exceptions import MyException

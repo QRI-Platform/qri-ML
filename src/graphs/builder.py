@@ -20,6 +20,7 @@ from src.nodes.conditional_nodes import (
 from src.core.memory import get_checkpointer, get_store
 from langgraph.prebuilt import ToolNode, tools_condition
 from src.tools.solver_tool import solver
+from src.tools.save_long_term_memory_tool import save_long_term_memory
 
 
 @lru_cache
@@ -35,7 +36,7 @@ def get_graph():
         workflow.add_node("retreiver_node", retreiver_node)
         workflow.add_node("chat_node", chat_node)
         workflow.add_node("summary_node", summerizer)
-        workflow.add_node("tool_node", ToolNode([solver]))
+        workflow.add_node("tool_node", ToolNode([solver, save_long_term_memory]))
         workflow.add_edge(START, "thread_manager_node")
 
         workflow.add_conditional_edges(

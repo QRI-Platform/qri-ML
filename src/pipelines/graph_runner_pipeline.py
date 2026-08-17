@@ -21,10 +21,18 @@ class GraphRunnerPipeline(Pipeline):
         try:
             logger.info("Pipeline.initiate called: user=%s thread=%s files=%d message=%s",
                         user_id, thread_id, len(file_paths or []), bool(message))
-            state = {
-                "file_paths": file_paths or [],
-                "messages": [HumanMessage(content=message)] if message else [],
-            }
+
+            if not file_paths:
+                state = {
+                    "file_paths": file_paths or [],
+                    "messages": [HumanMessage(content=message)] if message else [],
+                }
+            else:
+                state = {
+                    "file_paths": file_paths or [],
+                    "messages": [HumanMessage(content=message)] if message else [],
+                    "has_documents":True
+                }
 
             callbacks = []
             try:

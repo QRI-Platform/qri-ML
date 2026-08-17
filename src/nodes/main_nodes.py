@@ -19,7 +19,9 @@ from langfuse import observe
 from typing import Optional,List,Optional
 from langchain_core.messages import HumanMessage
 from src.tools.solver_tool import solver
+from src.tools.save_long_term_memory_tool import save_long_term_memory
 from langchain_core.output_parsers import PydanticOutputParser
+from src.utils.langchain_utils import TaggedPydanticOutputParser
 
 import re
 
@@ -54,17 +56,20 @@ async def orchastrator_node(state: State, config: RunnableConfig) -> dict:
         thread_id = config.get("configurable", {}).get("thread_id", "unknown")
 
         # --- Check if this thread's namespace has any vectors in Pinecone ---
-        has_documents = False
-        try:
-            pc = get_pinecone_client()
-            index = pc.Index(DEFAULT_INDEX_NAME)
-            stats = index.describe_index_stats()
-            ns_stats = stats.get("namespaces", {}).get(str(thread_id), {})
-            vector_count = ns_stats.get("vector_count", 0)
-            has_documents = vector_count > 0
-            logger.info("Pinecone namespace=%s has %d vectors (has_documents=%s)", thread_id, vector_count, has_documents)
-        except Exception as pc_err:
-            logger.warning("Could not query Pinecone stats, defaulting has_documents=False: %s", pc_err)
+        has_documents = state.get("has_documents",False)
+        logger.debug(f"Received has_documents {has_documents}")
+        # try:
+            # pc = get_pinecone_client()
+            # index = pc.Index(DEFAULT_INDEX_NAME)
+            # stats = index.describe_index_stats()
+            # ns_stats = stats.get("namespaces", {}).get(str(thread_id), {})
+            # vector_count = ns_stats.get("vector_count", 0)
+            # has_documents = vector_count > 0
+
+
+            # logger.info("Pinecone namespace=%s has %d vectors (has_documents=%s)", thread_id, vector_count, has_documents)
+        # except Exception as pc_err:
+        #     logger.warning("Could not query Pinecone stats, defaulting has_documents=False: %s", pc_err)
 
         llm = get_llm()
         structured_llm = llm.with_structured_output(OrchastratorOutput)
@@ -146,39 +151,37 @@ async def retreiver_node(state: State, config: RunnableConfig):
         raise MyException(e, sys)
 
 
-
-
 @observe(name="chat_node")
-async def chat_node(state: State, config: RunnableConfig, store: BaseStore):
+async def chat_node(state: State, config: RunnableConfig, store: BaseStore) -> dict:
     try:
-          # local import to avoid circulars
-
         user_id = config.get("configurable", {}).get("user_id", "unknown")
         messages = state.get("messages", [])
         retreived_results = state.get("retreived_results", [])
         logger.info("chat_node started for user=%s, messages_count=%d", user_id, len(messages))
 
-        # Long term memory retrieve
+        # 1. Long-term memory retrieve from LangGraph BaseStore
         lsm = await store.asearch(("user", str(user_id), "details"))
-        user_memories = "\n".join([f"- {item.key}: {item.value.get('data')}" for item in lsm if item.value]) if lsm else "None"
+        user_memories = (
+            "\n".join([f"- {item.key}: {item.value.get('data')}" for item in lsm if item.value])
+            if lsm else "None"
+        )
 
-        # Context & summary preparation
-        context = "\n\n".join([doc.page_content for doc in retreived_results]) if retreived_results else "None"
+        # 2. Context preparation from RAG search
+        context = (
+            "\n\n".join([doc.page_content for doc in retreived_results])
+            if retreived_results else "None"
+        )
 
-        # Dynamic output parser for ChatOutput schema
-        chat_parser = PydanticOutputParser(pydantic_object=ChatOutput)
-
-        # Invoke Prompt Template directly
+        # 3. Invoke Prompt
         prompt_input = CHAT_PROMPT.invoke({
             "user_memories": user_memories,
             "context": context,
             "messages": messages,
             "max_words": LLM_OUTPUT_MAX_WORDS,
-            "format_instructions": chat_parser.get_format_instructions(),
         })
 
-        # Single LLM call with bound tools
-        llm = get_llm().bind_tools([solver])
+        # 4. LLM call with bound tools
+        llm = get_llm().bind_tools([solver, save_long_term_memory])
         raw_msg: AIMessage = await llm.ainvoke(prompt_input)
 
         tool_calls = getattr(raw_msg, "tool_calls", []) or []
@@ -187,37 +190,17 @@ async def chat_node(state: State, config: RunnableConfig, store: BaseStore):
             logger.info("chat_node routed to tool_node (tool_calls=%d)", len(tool_calls))
             return {"messages": [raw_msg]}
 
-        # Parse structured output from LLM response content
-        parsed_output: Optional[ChatOutput] = None
-        content_str = raw_msg.content if isinstance(raw_msg.content, str) else str(raw_msg.content)
-        try:
-            parsed_output = chat_parser.parse(content_str)
-        except Exception:
-            try:
-                cleaned_str = re.sub(r"^```(?:json)?\s*|\s*```$", "", content_str.strip(), flags=re.MULTILINE)
-                parsed_output = chat_parser.parse(cleaned_str)
-            except Exception as pe:
-                logger.warning("Failed to parse ChatOutput via PydanticOutputParser: %s", str(pe))
-
-        if parsed_output is not None:
-            response_text = parsed_output.response
-            if parsed_output.memory_key and parsed_output.memory_value and parsed_output.memory_key.lower() not in ["null", "none"]:
-                key_name = parsed_output.memory_key.strip().lower().replace(" ", "_")
-                logger.info("Storing long-term memory for user %s: %s = %s", user_id, key_name, parsed_output.memory_value)
-                await store.aput(
-                    namespace=("user", str(user_id), "details"),
-                    key=key_name,
-                    value={"data": parsed_output.memory_value.strip()},
-                )
-        else:
-            response_text = content_str
-
+        # 5. Extract response text for chat state & UI
+        response_text = raw_msg.content if isinstance(raw_msg.content, str) else str(raw_msg.content)
         clean_msg = AIMessage(content=response_text)
-        return {"messages": [clean_msg], "ai_response": response_text}
+        return {
+            "messages": [clean_msg],
+            "ai_response": response_text,
+        }
+
     except Exception as e:
         logger.error("chat_node failed: %s", str(e))
         raise MyException(e, sys)
-
 # async def summary_node(state: State):
 #     try:
 #         logger.info("=" * 50)

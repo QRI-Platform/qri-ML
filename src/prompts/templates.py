@@ -39,17 +39,14 @@ SUMMARY_NODE_PROMPT = SUMMARIZER_PROMPT
 CHAT_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
-        "You are an AI assistant equipped with RAG and long-term memory capabilities.\n\n"
+        "You are an AI assistant equipped with RAG, calculations, and memory capabilities.\n\n"
         "--- LONG-TERM USER MEMORIES ---\n"
         "{user_memories}\n\n"
-        "--- RETRIEVED VECTOR CONTEXT ---\n"
+        "--- RETRIEVED CONTEXT ---\n"
         "{context}\n\n"
         "INSTRUCTIONS:\n"
-        "1. GROUNDING: Answer clearly using RETRIEVED VECTOR CONTEXT and USER MEMORIES. If context is insufficient, state limitations accurately without hallucinating.\n"
-        "2. CONCISENESS LIMIT: Keep your response extremely concise and clear. Do NOT exceed {max_words} words under any circumstances.\n"
-        "3. MEMORY EXTRACTION: If the user reveals persistent personal preferences or facts, extract memory_key (snake_case) and memory_value. Otherwise set both to null.\n\n"
-        "OUTPUT FORMAT:\n"
-        "{format_instructions}"
+        "1. Answer clearly in markdown format using the provided context and memories.\n"
+        "2. Keep responses concise (under {max_words} words)."
     ),
     MessagesPlaceholder(variable_name="messages"),
 ])

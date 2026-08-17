@@ -11,6 +11,7 @@ from src.services.conversation_service import (
     delete_user_conversation,
     delete_long_term_memory_key,
     upsert_long_term_memory,
+    delete_has_attributes
 )
 
 router: APIRouter = APIRouter(dependencies=[Depends(authenticate_user)])
@@ -99,7 +100,8 @@ async def delete_thread_endpoint(request: Request):
     try:
         logger.info("delete endpoint: user=%s thread=%s", request.state.user_id, request.state.thread_id)
         deleted = await delete_pinecone_namespace(request.state.thread_id)
-        if deleted:
+        deleted_has_attributes = await delete_has_attributes(request.state.thread_id)
+        if deleted and deleted_has_attributes:
             logger.info("delete endpoint: completed for thread=%s", request.state.thread_id)
             return JSONResponse(content={"success": True, "message": "Thread deleted successfully", "data": None}, status_code=200)
         else:
