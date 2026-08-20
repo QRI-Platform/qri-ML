@@ -109,19 +109,19 @@ async def upsert_long_term_memory(user_id: str, key: str, value: str):
         raise
 
 
-async def delete_has_attributes(user_id:str,thread_id:str)->bool:
-    """Delestes has documents boolean attributes"""
+async def delete_has_attributes(user_id: str, thread_id: str) -> bool:
+    """Deletes has documents boolean attributes"""
 
     try:
         graph = get_graph()
         config = {
-                        "configurable": {"thread_id": thread_id, "user_id": user_id},
-
+            "configurable": {"thread_id": thread_id, "user_id": user_id},
         }           
         await graph.aupdate_state(config, {"has_documents": False})
 
-        logger.info("toggled has_documents to False for user_id %s and thread_id %s",user_id,thread_id)
+        logger.info("toggled has_documents to False for user_id %s and thread_id %s", user_id, thread_id)
+        return True
 
     except Exception as e:
-        logger.error("Error while toggling has_documents user_id %s thread_id %s error %s",user_id,thread_id,e)
-        raise
+        logger.error("Error while toggling has_documents user_id %s thread_id %s error %s", user_id, thread_id, e)
+        return False

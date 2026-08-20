@@ -98,12 +98,14 @@ async def delete_thread_endpoint(request: Request):
     use `DELETE /conversation` for that.
     """
     try:
-        logger.info("delete endpoint: user=%s thread=%s", request.state.user_id, request.state.thread_id)
-        deleted = await delete_pinecone_namespace(request.state.thread_id)
-        deleted_has_attributes = await delete_has_attributes(request.state.thread_id)
-        if deleted and deleted_has_attributes:
-            logger.info("delete endpoint: completed for thread=%s", request.state.thread_id)
-            return JSONResponse(content={"success": True, "message": "Thread deleted successfully", "data": None}, status_code=200)
+        user_id = request.state.user_id
+        thread_id = request.state.thread_id
+        logger.info("delete endpoint: user=%s thread=%s", user_id, thread_id)
+        deleted = await delete_pinecone_namespace(thread_id)
+        deleted_has_attributes = await delete_has_attributes(user_id=user_id, thread_id=thread_id)
+        if deleted or deleted_has_attributes:
+            logger.info("delete endpoint: completed for thread=%s", thread_id)
+            return JSONResponse(content={"success": True, "message": "Thread vector data deleted and state reset successfully", "data": None}, status_code=200)
         else:
             return JSONResponse(content={"success": False, "message": "Namespace not found in Pinecone", "data": None}, status_code=404)
     except Exception as e:
