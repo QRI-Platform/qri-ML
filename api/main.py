@@ -8,6 +8,8 @@ from api.routes.graph_routes import router as graph_router
 from api.routes.user_routes import router as UserRouter
 
 
+
+
 tags_metadata = [
     {
         "name": "RAG Pipeline",
@@ -56,5 +58,6 @@ app = FastAPI(
     contact={"name": "VashuTheGreat"},
     openapi_tags=tags_metadata,
 )
+
 app.include_router(graph_router, prefix="/api/v1/graph", tags=["RAG Pipeline"])
 app.include_router(UserRouter, prefix="/api/v1/user", tags=["User & Conversation"])

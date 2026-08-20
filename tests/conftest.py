@@ -7,7 +7,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.store.memory import InMemoryStore
 
 # Ensure project root is in sys.path for pytest
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 os.environ.setdefault("GROQ_API_KEY", "test-groq-key")
 os.environ.setdefault("PINECONE_API_KEY", "test-pinecone-key")
@@ -41,7 +41,7 @@ def mock_memory_singletons(mock_checkpointer, mock_store):
 @pytest.fixture
 def mock_llm():
     """Mock LangChain LLM supporting standard & structured output calls."""
-    from src.domain.state import OrchastratorOutput, QueryGenerationOutput
+    from src.domain.state import OrchestratorOutput, OrchastratorOutput, QueryGenerationOutput
 
     llm = MagicMock()
 
@@ -50,10 +50,10 @@ def mock_llm():
 
     llm.ainvoke = AsyncMock(side_effect=mock_ainvoke)
 
-    def with_structured_output(schema):
+    def with_structured_output(schema, method=None):
         mock_struct = MagicMock()
-        if schema == OrchastratorOutput:
-            mock_struct.ainvoke = AsyncMock(return_value=OrchastratorOutput(require_db_search=True))
+        if schema in (OrchestratorOutput, OrchastratorOutput):
+            mock_struct.ainvoke = AsyncMock(return_value=OrchestratorOutput(require_db_search=True))
         elif schema == QueryGenerationOutput:
             mock_struct.ainvoke = AsyncMock(return_value=QueryGenerationOutput(queries=["query 1", "query 2"]))
         else:

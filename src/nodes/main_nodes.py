@@ -14,14 +14,12 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.store.base import BaseStore
 from src.prompts.templates import QUERY_GENERATION_PROMPT, ORCHESTRATOR_PROMPT, CHAT_PROMPT, SUMMARY_NODE_PROMPT
 from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, LENGTH_OF_SUMMARY_GENERATED, MINIMUM_LENGTH_OF_LONG_TERM_MEMORY, DEFAULT_INDEX_NAME, LLM_OUTPUT_MAX_WORDS
-from src.domain.state import State, QueryGenerationOutput, OrchastratorOutput, ChatOutput
+from src.domain.state import State, QueryGenerationOutput, OrchestratorOutput, OrchastratorOutput, ChatOutput
 from langfuse import observe
 from typing import Optional,List,Optional
 from langchain_core.messages import HumanMessage
 from src.tools.solver_tool import solver
 from src.tools.save_long_term_memory_tool import save_long_term_memory
-from langchain_core.output_parsers import PydanticOutputParser
-from src.utils.langchain_utils import TaggedPydanticOutputParser
 
 import re
 
@@ -58,21 +56,9 @@ async def orchastrator_node(state: State, config: RunnableConfig) -> dict:
         # --- Check if this thread's namespace has any vectors in Pinecone ---
         has_documents = state.get("has_documents",False)
         logger.debug(f"Received has_documents {has_documents}")
-        # try:
-            # pc = get_pinecone_client()
-            # index = pc.Index(DEFAULT_INDEX_NAME)
-            # stats = index.describe_index_stats()
-            # ns_stats = stats.get("namespaces", {}).get(str(thread_id), {})
-            # vector_count = ns_stats.get("vector_count", 0)
-            # has_documents = vector_count > 0
 
-
-            # logger.info("Pinecone namespace=%s has %d vectors (has_documents=%s)", thread_id, vector_count, has_documents)
-        # except Exception as pc_err:
-        #     logger.warning("Could not query Pinecone stats, defaulting has_documents=False: %s", pc_err)
-
-        llm = get_llm()
-        structured_llm = llm.with_structured_output(OrchastratorOutput)
+        llm = get_llm(reasoning_format="hidden", reasoning_effort="low")
+        structured_llm = llm.with_structured_output(OrchestratorOutput,method="json_schema")
         prompt_input = ORCHESTRATOR_PROMPT.invoke({"messages": state.get("messages", []),"has_documents": has_documents})
         result = await structured_llm.ainvoke(prompt_input)
 
@@ -92,8 +78,8 @@ async def orchastrator_node(state: State, config: RunnableConfig) -> dict:
 async def query_generation_node(state: State) -> dict:
     try:
         logger.info("query_generation_node started")
-        llm = get_llm()
-        structured_llm = llm.with_structured_output(QueryGenerationOutput)
+        llm = get_llm(reasoning_format="hidden", reasoning_effort="low")
+        structured_llm = llm.with_structured_output(QueryGenerationOutput,method="json_schema")
         
         prompt_input = QUERY_GENERATION_PROMPT.invoke({"messages": state.get("messages", [])})
         result = await structured_llm.ainvoke(prompt_input)

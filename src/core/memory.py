@@ -6,8 +6,21 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.store.base import BaseStore
 from langgraph.store.base.batch import AsyncBatchedBaseStore
 
+# Monkey-patch AsyncBatchedBaseStore.__del__ to prevent AttributeError when _task attribute is missing on deallocation
+_orig_del = getattr(AsyncBatchedBaseStore, "__del__", None)
+if _orig_del:
+    def _safe_del(self):
+        if getattr(self, "_task", None) is not None:
+            try:
+                _orig_del(self)
+            except Exception:
+                pass
+    AsyncBatchedBaseStore.__del__ = _safe_del
+
 if not hasattr(AsyncBatchedBaseStore, "_task"):
     AsyncBatchedBaseStore._task = None
+if not hasattr(AsyncPostgresStore, "_task"):
+    AsyncPostgresStore._task = None
 
 from src.core.logger import logger
 from src.core.exceptions import MyException
@@ -17,10 +30,13 @@ from src.core.constants import MAXIMUM_CONNECTION_POOL_SIZE
 # Neon DB Connection String
 DB_URI = get_app_config().postgres_sql_url
 
-# Async Connection Pool
+# Async Connection Pool with automatic idle connection recycling & health checks for Neon Postgres SSL timeouts
 pool = AsyncConnectionPool(
     conninfo=DB_URI, 
     max_size=MAXIMUM_CONNECTION_POOL_SIZE, 
+    max_idle=30,
+    max_lifetime=300,
+    check=AsyncConnectionPool.check_connection,
     kwargs={"autocommit": True},
     open=False
 )

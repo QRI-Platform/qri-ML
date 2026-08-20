@@ -4,7 +4,7 @@ from typing import Annotated, List, Optional, Any, TypedDict
 from langgraph.graph.message import add_messages
 
 
-class OrchastratorOutput(BaseModel):
+class OrchestratorOutput(BaseModel):
     require_db_search: bool = Field(
         description="Set to true if the user query requires searching the vector database, false if it can be answered directly."
     )
@@ -35,6 +35,7 @@ class State(TypedDict):
     ai_response: Optional[str]
 
 
-Orchastrator_output = OrchastratorOutput
+Orchestrator_output = OrchestratorOutput
+OrchastratorOutput = OrchestratorOutput
+Orchastrator_output = OrchestratorOutput
 Query_generation_output = QueryGenerationOutput
-

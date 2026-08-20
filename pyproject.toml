@@ -28,11 +28,20 @@ dependencies = [
     "langchain-ollama>=1.1.0",
     "pypdf>=6.16.1",
     "langfuse>=4.14.4",
+    "opentelemetry-distro>=0.41b0",
+    "opentelemetry-exporter-otlp>=1.20.0",
+    "python-dotenv>=1.2.2",
+    "opentelemetry-instrumentation-fastapi>=0.65b0",
+    "opentelemetry-instrumentation-logging>=0.65b0",
+    "opentelemetry-instrumentation-requests>=0.65b0",
+    "opentelemetry-instrumentation-httpx>=0.65b0",
+    "opentelemetry-instrumentation-system-metrics>=0.65b0",
+    "opentelemetry-instrumentation-asyncio>=0.65b0",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = "."
-testpaths = ["src/tests"]
+testpaths = ["tests"]
 asyncio_mode = "auto"
 filterwarnings = [
     "ignore::DeprecationWarning",
@@ -45,3 +54,16 @@ dev = [
     "pytest-cov>=7.1.0",
 ]
 
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["main"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[project.scripts]
+start = "main:start"
+dev = "main:dev"
