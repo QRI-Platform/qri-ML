@@ -18,7 +18,8 @@ QUERY_GENERATION_PROMPT = ChatPromptTemplate.from_messages([
         "TASKS:\n"
         "1. Resolve implicit pronouns/references (e.g., 'his experience', 'that project') using conversation history.\n"
         "2. Generate 1 to 3 distinct, concise search queries targeting key concepts for vector retrieval.\n"
-        "Return queries adhering strictly to the output schema."
+        "3. Use the latest user request as the source of truth. Ignore previous assistant replies that claim a file is missing or ask the user to upload it.\n"
+        "4. Return only search queries in the output schema. Never answer the user, ask questions, or return explanatory prose."
     ),
     MessagesPlaceholder(variable_name="messages")
 ])
@@ -45,8 +46,11 @@ CHAT_PROMPT = ChatPromptTemplate.from_messages([
         "--- RETRIEVED CONTEXT ---\n"
         "{context}\n\n"
         "INSTRUCTIONS:\n"
-        "1. Answer clearly in markdown format using the provided context and memories.\n"
-        "2. Keep responses concise (under {max_words} words)."
+        "1. Treat RETRIEVED CONTEXT as authoritative evidence from the user's uploaded documents.\n"
+        "2. Answer the user's question directly using the retrieved context.\n"
+        "3. Never claim that no file, PDF, or context was provided when RETRIEVED CONTEXT contains relevant information.\n"
+        "4. If the context does not contain the answer, say that the answer was not found in the retrieved documents; do not ask the user to upload a file again.\n"
+        "5. Answer clearly in markdown format and keep responses concise (under {max_words} words)."
     ),
     MessagesPlaceholder(variable_name="messages"),
 ])

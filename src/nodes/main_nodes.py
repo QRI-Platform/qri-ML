@@ -57,8 +57,12 @@ async def orchastrator_node(state: State, config: RunnableConfig) -> dict:
         has_documents = state.get("has_documents",False)
         logger.debug(f"Received has_documents {has_documents}")
 
-        llm = get_llm(reasoning_format="hidden", reasoning_effort="low")
-        structured_llm = llm.with_structured_output(OrchestratorOutput,method="json_schema")
+        llm = get_llm(reasoning_format=None, reasoning_effort=None)
+        structured_llm = llm.with_structured_output(
+            OrchestratorOutput,
+            method="json_schema",
+            strict=True,
+        )
         prompt_input = ORCHESTRATOR_PROMPT.invoke({"messages": state.get("messages", []),"has_documents": has_documents})
         result = await structured_llm.ainvoke(prompt_input)
 
@@ -78,8 +82,12 @@ async def orchastrator_node(state: State, config: RunnableConfig) -> dict:
 async def query_generation_node(state: State) -> dict:
     try:
         logger.info("query_generation_node started")
-        llm = get_llm(reasoning_format="hidden", reasoning_effort="low")
-        structured_llm = llm.with_structured_output(QueryGenerationOutput,method="json_schema")
+        llm = get_llm(reasoning_format=None, reasoning_effort=None)
+        structured_llm = llm.with_structured_output(
+            QueryGenerationOutput,
+            method="json_schema",
+            strict=True,
+        )
         
         prompt_input = QUERY_GENERATION_PROMPT.invoke({"messages": state.get("messages", [])})
         result = await structured_llm.ainvoke(prompt_input)
@@ -156,6 +164,11 @@ async def chat_node(state: State, config: RunnableConfig, store: BaseStore) -> d
         context = (
             "\n\n".join([doc.page_content for doc in retreived_results])
             if retreived_results else "None"
+        )
+        logger.info(
+            "chat_node prepared retrieved context: documents=%d, characters=%d",
+            len(retreived_results),
+            len(context),
         )
 
         # 3. Invoke Prompt
