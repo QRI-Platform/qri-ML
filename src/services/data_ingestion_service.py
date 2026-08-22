@@ -14,11 +14,45 @@ from src.core.exceptions import MyException
 from langfuse import observe
 
 
+
+# ============== CPU optimisational  Dockling Config imports ===========
+import multiprocessing
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import (
+    AcceleratorDevice,
+    AcceleratorOptions,
+    PdfPipelineOptions,
+    TableFormerMode,
+    RapidOcrOptions # light ocr c++ based
+)
+from docling.document_converter import DocumentConverter , PdfFormatOption
+from langchain_docling.loader import ExportType
+
 class DataIngestion:
     def __init__(self, data_ingestion_config: DataIngestionConfig, retriever: Retriever):
         self.data_ingestion_config = data_ingestion_config
         self.retriever = retriever
         logger.debug("DataIngestion initialized for %d files", len(data_ingestion_config.files_path))
+
+        # ------ CPU optimisation Convertor -----------
+
+        accel = AcceleratorOptions(
+            num_threads=multiprocessing.cpu_count(), device=AcceleratorDevice.CPU
+        )
+
+        pipeline_opts = PdfPipelineOptions(accelerator_options=accel)
+
+        pipeline_opts.do_ocr = True
+        pipeline_opts.ocr_options = RapidOcrOptions()
+
+        pipeline_opts.table_structure_options.mode = TableFormerMode.FAST
+
+        self.converter = DocumentConverter(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_opts),
+                InputFormat.IMAGE: PdfFormatOption(pipeline_options=pipeline_opts),
+            }
+        )
 
     @staticmethod
     def _inject_filename_metadata(documents: List[Document], file_path: str, namespace: str) -> List[Document]:
@@ -46,7 +80,7 @@ class DataIngestion:
     async def get_loader(self) -> List[DoclingLoader]:
         try:
             logger.info("Initializing loaders for %d input files", len(self.data_ingestion_config.files_path))
-            loaders = [DoclingLoader(file_path=fp) for fp in self.data_ingestion_config.files_path]
+            loaders = [DoclingLoader(file_path=fp,converter=self.converter,export_type=ExportType.MARKDOWN) for fp in self.data_ingestion_config.files_path]
             logger.info("Created %d file loaders", len(loaders))
             return loaders
         except Exception as e:

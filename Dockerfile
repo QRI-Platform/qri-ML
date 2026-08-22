@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y \
     libxrender-dev \
     libxcb1 \
     && rm -rf /var/lib/apt/lists/*
+
+RUN sudo apt-get update && sudo apt-get install -y tesseract-ocr libtesseract-dev libleptonica-dev pkg-config
     
 # Install uv binary from official image (no curl or sudo required)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/

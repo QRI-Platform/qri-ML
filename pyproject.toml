@@ -37,6 +37,9 @@ dependencies = [
     "opentelemetry-instrumentation-httpx>=0.65b0",
     "opentelemetry-instrumentation-system-metrics>=0.65b0",
     "opentelemetry-instrumentation-asyncio>=0.65b0",
+    "tesserocr>=2.11.0",
+    "rapidocr-onnxruntime>=1.4.4",
+    "onnxruntime>=1.29.0",
 ]
 
 [tool.pytest.ini_options]
