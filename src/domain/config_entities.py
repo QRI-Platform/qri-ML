@@ -32,3 +32,8 @@ class DataIngestionConfig:
     namespace: Optional[str] = None
     chunk_size: int = CHUNK_SIZE
     chunk_overlap: int = CHUNK_OVERLAP
+    parser_type: str = "auto"  # "auto" (hybrid pypdf+docling fallback), "pypdf" (ultra fast), "docling" (structural)
+    do_ocr: bool = False       # Force OCR when using docling
+    ocr_batch_size: int = 15   # Max pages per Docling OCR batch to prevent memory spikes
+
+

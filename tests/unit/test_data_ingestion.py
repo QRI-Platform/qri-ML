@@ -51,3 +51,49 @@ async def test_ingest_pipeline():
         assert artifact.retriever == mock_retriever
         mock_retriever.create_retriever.assert_called_once()
         mock_retriever.add_documents.assert_called_once()
+
+
+def test_fast_file_loader_pypdf():
+    """Test FastFileLoader using pypdf parser_type."""
+    from src.services.data_ingestion_service import FastFileLoader
+    loader = FastFileLoader(file_path="sample.pdf", parser_type="pypdf")
+    with patch.object(loader, "_load_pypdf", return_value=[Document(page_content="PDF Fast Content")]):
+        docs = loader.load()
+        assert len(docs) == 1
+        assert docs[0].page_content == "PDF Fast Content"
+
+
+def test_fast_file_loader_auto_fallback():
+    """Test FastFileLoader auto mode falling back to docling when text length is < 50."""
+    from src.services.data_ingestion_service import FastFileLoader
+    loader = FastFileLoader(file_path="scanned.pdf", parser_type="auto")
+    with patch.object(loader, "_load_pypdf", return_value=[Document(page_content="Short")]), \
+         patch.object(loader, "_load_docling", return_value=[Document(page_content="OCR Extracted Content")]):
+        docs = loader.load()
+        assert len(docs) == 1
+        assert docs[0].page_content == "OCR Extracted Content"
+
+
+def test_fast_file_loader_batched_docling():
+    """Test FastFileLoader streaming page batches for large PDFs."""
+    from src.services.data_ingestion_service import FastFileLoader
+    loader = FastFileLoader(file_path="large_scanned.pdf", parser_type="docling", ocr_batch_size=2)
+    
+    mock_page = MagicMock()
+    mock_pdf_reader = MagicMock()
+    mock_pdf_reader.pages = [mock_page, mock_page, mock_page, mock_page, mock_page]  # 5 pages > batch size 2
+    
+    mock_docling_loader = MagicMock()
+    mock_docling_loader.load.return_value = [Document(page_content="Batch Content", metadata={})]
+
+    with patch("src.services.data_ingestion_service.PdfReader", return_value=mock_pdf_reader), \
+         patch("src.services.data_ingestion_service.PdfWriter"), \
+         patch("src.services.data_ingestion_service.DoclingLoader", return_value=mock_docling_loader), \
+         patch("tempfile.NamedTemporaryFile"), \
+         patch("os.path.exists", return_value=True), \
+         patch("os.remove"):
+        docs = loader._load_docling()
+        # 5 pages with batch size 2 -> 3 batches -> 3 documents
+        assert len(docs) == 3
+
+
