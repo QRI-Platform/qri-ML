@@ -8,6 +8,7 @@ CLOUD_REGION: str = "us-east-1"
 EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
 RETRIEVER_TOP_K: int = 4 # top 4 most relevant documents to retrieve from vector store
 NAMESPACE = None
+DATA_INGEST_NUM_OF_WORKERS=8
 
 
 

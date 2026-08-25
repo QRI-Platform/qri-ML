@@ -61,7 +61,10 @@ def warmup_dependencies():
     _ = get_checkpointer()
     _ = get_store()
     _ = get_thread_manager()
-    _ = get_shared_docling_converter()
+    _ = get_shared_docling_converter()  # Pre-initialize Docling Converter singleton into RAM
+
+
+
     logger.info("All dependencies singletons warmed up successfully.")
 
 

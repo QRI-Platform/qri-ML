@@ -7,49 +7,59 @@ from langchain_docling.loader import ExportType
 from docling.document_converter import DocumentConverter, PdfFormatOption, ImageFormatOption
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.datamodel.base_models import InputFormat
+from docling.datamodel.accelerator_options import (
+    AcceleratorOptions,
+)
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 import os
 from src.retrievers.pinecone_retriever import Retriever
 from src.domain.config_entities import DataIngestionConfig
 from src.domain.artifacts import DataIngestionArtifact
+from src.core.constants import DATA_INGEST_NUM_OF_WORKERS
 from src.core.logger import logger
 from src.core.exceptions import MyException
 from langfuse import observe
+from functools import lru_cache
 
 
-_SHARED_DOCLING_CONVERTER: DocumentConverter | None = None
-
-
+@lru_cache
 def get_shared_docling_converter() -> DocumentConverter:
     """Return a cached singleton instance of DocumentConverter to prevent re-instantiating models per request."""
-    global _SHARED_DOCLING_CONVERTER
-    if _SHARED_DOCLING_CONVERTER is None:
-        logger.info("Initializing global Docling DocumentConverter singleton...")
-        # 1. PDF Pipeline Options (Image extraction, table structure, and layout ML models disabled for ultra-fast native extraction)
-        pdf_pipeline_options = PdfPipelineOptions()
-        pdf_pipeline_options.do_ocr = False
-        pdf_pipeline_options.do_table_structure = False
-        pdf_pipeline_options.do_picture_classification = False
-        pdf_pipeline_options.generate_page_images = False
-        pdf_pipeline_options.generate_picture_images = False
-        pdf_pipeline_options.do_formula_enrichment = False
+    logger.info("Initializing global Docling DocumentConverter singleton...")
+    # 1. PDF Pipeline Options (Image extraction, table structure, and layout ML models disabled for ultra-fast native extraction)
+    pdf_pipeline_options = PdfPipelineOptions()
+    pdf_pipeline_options.do_ocr = False
+    pdf_pipeline_options.do_table_structure = False
+    pdf_pipeline_options.do_picture_classification = False
+    pdf_pipeline_options.generate_page_images = False
+    pdf_pipeline_options.generate_picture_images = False
+    pdf_pipeline_options.do_formula_enrichment = False
+    pdf_pipeline_options.accelerator_options = AcceleratorOptions(
+    num_threads=DATA_INGEST_NUM_OF_WORKERS,  # adjust based on your CPU cores
+    device="auto"   # "cuda" if GPU is available
+    )
 
-        # 2. Image Pipeline Options (Layout model, OCR, and LaTeX formula enrichment enabled for math questions)
-        image_pipeline_options = PdfPipelineOptions()
-        image_pipeline_options.do_ocr = True
-        image_pipeline_options.do_formula_enrichment = True  # Equation & LaTeX decoding on
-        image_pipeline_options.do_picture_classification = True
-        image_pipeline_options.generate_page_images = True
-        image_pipeline_options.generate_picture_images = True
+    # 2. Image Pipeline Options (Layout model, OCR, and LaTeX formula enrichment enabled for math questions)
+    image_pipeline_options = PdfPipelineOptions()
+    image_pipeline_options.do_ocr = True
+    image_pipeline_options.do_formula_enrichment = True  # Equation & LaTeX decoding on
+    image_pipeline_options.do_picture_classification = True
+    image_pipeline_options.generate_page_images = True
+    image_pipeline_options.generate_picture_images = True
+    image_pipeline_options.accelerator_options = AcceleratorOptions(
+        num_threads=DATA_INGEST_NUM_OF_WORKERS,  # adjust based on your CPU cores
+        device="auto"   # "cuda" if GPU is available
+    )
 
-        _SHARED_DOCLING_CONVERTER = DocumentConverter(
-            format_options={
-                InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options),
-                InputFormat.IMAGE: ImageFormatOption(pipeline_options=image_pipeline_options),
-            }
-        )
-        logger.info("Global Docling DocumentConverter initialized successfully.")
+    _SHARED_DOCLING_CONVERTER = DocumentConverter(
+        allowed_formats=[InputFormat.PDF, InputFormat.IMAGE],
+        format_options={
+            InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options),
+            InputFormat.IMAGE: ImageFormatOption(pipeline_options=image_pipeline_options),
+        }
+    )
+    logger.info("Global Docling DocumentConverter initialized successfully.")
     return _SHARED_DOCLING_CONVERTER
 
 
