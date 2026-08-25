@@ -74,6 +74,7 @@ def test_pipeline_options_format_configuration():
     assert pdf_opts.generate_picture_images is False
     assert pdf_opts.do_picture_classification is False
     assert pdf_opts.do_ocr is False
+    assert pdf_opts.do_table_structure is False
     assert pdf_opts.do_formula_enrichment is False
 
     # IMAGE format check

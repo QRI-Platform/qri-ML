@@ -18,20 +18,24 @@ from src.core.exceptions import MyException
 from langfuse import observe
 
 
-class DataIngestion:
-    def __init__(self, data_ingestion_config: DataIngestionConfig, retriever: Retriever):
-        self.data_ingestion_config = data_ingestion_config
-        self.retriever = retriever
+_SHARED_DOCLING_CONVERTER: DocumentConverter | None = None
 
-        # PDF Pipeline Options (Image extraction and layout models disabled for speed)
+
+def get_shared_docling_converter() -> DocumentConverter:
+    """Return a cached singleton instance of DocumentConverter to prevent re-instantiating models per request."""
+    global _SHARED_DOCLING_CONVERTER
+    if _SHARED_DOCLING_CONVERTER is None:
+        logger.info("Initializing global Docling DocumentConverter singleton...")
+        # 1. PDF Pipeline Options (Image extraction, table structure, and layout ML models disabled for ultra-fast native extraction)
         pdf_pipeline_options = PdfPipelineOptions()
         pdf_pipeline_options.do_ocr = False
+        pdf_pipeline_options.do_table_structure = False
         pdf_pipeline_options.do_picture_classification = False
         pdf_pipeline_options.generate_page_images = False
         pdf_pipeline_options.generate_picture_images = False
         pdf_pipeline_options.do_formula_enrichment = False
 
-        # Image Pipeline Options (Layout model, OCR, and LaTeX formula enrichment enabled for math questions)
+        # 2. Image Pipeline Options (Layout model, OCR, and LaTeX formula enrichment enabled for math questions)
         image_pipeline_options = PdfPipelineOptions()
         image_pipeline_options.do_ocr = True
         image_pipeline_options.do_formula_enrichment = True  # Equation & LaTeX decoding on
@@ -39,12 +43,21 @@ class DataIngestion:
         image_pipeline_options.generate_page_images = True
         image_pipeline_options.generate_picture_images = True
 
-        self.custom_converter = DocumentConverter(
+        _SHARED_DOCLING_CONVERTER = DocumentConverter(
             format_options={
                 InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options),
                 InputFormat.IMAGE: ImageFormatOption(pipeline_options=image_pipeline_options),
             }
         )
+        logger.info("Global Docling DocumentConverter initialized successfully.")
+    return _SHARED_DOCLING_CONVERTER
+
+
+class DataIngestion:
+    def __init__(self, data_ingestion_config: DataIngestionConfig, retriever: Retriever):
+        self.data_ingestion_config = data_ingestion_config
+        self.retriever = retriever
+        self.custom_converter = get_shared_docling_converter()
 
         logger.debug("DataIngestion initialized for %d files", len(data_ingestion_config.files_path))
 

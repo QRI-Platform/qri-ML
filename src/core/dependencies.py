@@ -7,6 +7,7 @@ from src.retrievers.pinecone_client import get_pinecone_client
 from src.core.memory import get_checkpointer, get_store
 from src.db.thread_manager import get_thread_manager
 from src.core.memory import init_db_services,close_db_services
+from src.services.data_ingestion_service import get_shared_docling_converter
 
 
 # initiaing monitoring
@@ -60,6 +61,7 @@ def warmup_dependencies():
     _ = get_checkpointer()
     _ = get_store()
     _ = get_thread_manager()
+    _ = get_shared_docling_converter()
     logger.info("All dependencies singletons warmed up successfully.")
 
 
