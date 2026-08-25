@@ -51,3 +51,36 @@ async def test_ingest_pipeline():
         assert artifact.retriever == mock_retriever
         mock_retriever.create_retriever.assert_called_once()
         mock_retriever.add_documents.assert_called_once()
+
+
+def test_pipeline_options_format_configuration():
+    """Verify distinct pipeline options for PDF (images/layout off) and IMAGE (formula/layout/OCR on)."""
+    from docling.datamodel.base_models import InputFormat
+
+    config = DataIngestionConfig(
+        files_path=["/tmp/test.pdf"],
+        namespace="test",
+        chunk_size=100,
+        chunk_overlap=10,
+    )
+    mock_retriever = MagicMock()
+    ingestion = DataIngestion(data_ingestion_config=config, retriever=mock_retriever)
+
+    fmt_opts = ingestion.custom_converter.format_to_options
+
+    # PDF format check
+    pdf_opts = fmt_opts[InputFormat.PDF].pipeline_options
+    assert pdf_opts.generate_page_images is False
+    assert pdf_opts.generate_picture_images is False
+    assert pdf_opts.do_picture_classification is False
+    assert pdf_opts.do_ocr is False
+    assert pdf_opts.do_formula_enrichment is False
+
+    # IMAGE format check
+    img_opts = fmt_opts[InputFormat.IMAGE].pipeline_options
+    assert img_opts.generate_page_images is True
+    assert img_opts.generate_picture_images is True
+    assert img_opts.do_picture_classification is True
+    assert img_opts.do_ocr is True
+    assert img_opts.do_formula_enrichment is True
+

@@ -2,7 +2,11 @@ import sys
 import asyncio
 from functools import partial
 from typing import List
-from langchain_docling.loader import DoclingLoader
+from langchain_docling import DoclingLoader
+from langchain_docling.loader import ExportType
+from docling.document_converter import DocumentConverter, PdfFormatOption, ImageFormatOption
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.datamodel.base_models import InputFormat
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 import os
@@ -18,6 +22,30 @@ class DataIngestion:
     def __init__(self, data_ingestion_config: DataIngestionConfig, retriever: Retriever):
         self.data_ingestion_config = data_ingestion_config
         self.retriever = retriever
+
+        # PDF Pipeline Options (Image extraction and layout models disabled for speed)
+        pdf_pipeline_options = PdfPipelineOptions()
+        pdf_pipeline_options.do_ocr = False
+        pdf_pipeline_options.do_picture_classification = False
+        pdf_pipeline_options.generate_page_images = False
+        pdf_pipeline_options.generate_picture_images = False
+        pdf_pipeline_options.do_formula_enrichment = False
+
+        # Image Pipeline Options (Layout model, OCR, and LaTeX formula enrichment enabled for math questions)
+        image_pipeline_options = PdfPipelineOptions()
+        image_pipeline_options.do_ocr = True
+        image_pipeline_options.do_formula_enrichment = True  # Equation & LaTeX decoding on
+        image_pipeline_options.do_picture_classification = True
+        image_pipeline_options.generate_page_images = True
+        image_pipeline_options.generate_picture_images = True
+
+        self.custom_converter = DocumentConverter(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options),
+                InputFormat.IMAGE: ImageFormatOption(pipeline_options=image_pipeline_options),
+            }
+        )
+
         logger.debug("DataIngestion initialized for %d files", len(data_ingestion_config.files_path))
 
     @staticmethod
@@ -46,7 +74,7 @@ class DataIngestion:
     async def get_loader(self) -> List[DoclingLoader]:
         try:
             logger.info("Initializing loaders for %d input files", len(self.data_ingestion_config.files_path))
-            loaders = [DoclingLoader(file_path=fp) for fp in self.data_ingestion_config.files_path]
+            loaders = [DoclingLoader(file_path=fp,converter=self.custom_converter,export_type=ExportType.MARKDOWN) for fp in self.data_ingestion_config.files_path]
             logger.info("Created %d file loaders", len(loaders))
             return loaders
         except Exception as e:
