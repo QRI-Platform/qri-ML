@@ -2882,6 +2882,8 @@ dependencies = [
     { name = "pypdf" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
+    { name = "rapid-latex-ocr" },
+    { name = "rapidocr-onnxruntime" },
     { name = "sentence-transformers" },
     { name = "uvicorn" },
 ]
@@ -2928,6 +2930,8 @@ requires-dist = [
     { name = "pypdf", specifier = ">=6.16.1" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "python-multipart", specifier = ">=0.0.32" },
+    { name = "rapid-latex-ocr", specifier = ">=0.0.6" },
+    { name = "rapidocr-onnxruntime", specifier = ">=1.4.4" },
     { name = "sentence-transformers", specifier = ">=5.6.0" },
     { name = "uvicorn", specifier = ">=0.52.1" },
 ]
@@ -2937,6 +2941,22 @@ dev = [
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-asyncio", specifier = ">=1.4.0" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
+]
+
+[[package]]
+name = "rapid-latex-ocr"
+version = "0.0.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "onnxruntime" },
+    { name = "opencv-python" },
+    { name = "pillow" },
+    { name = "pyyaml" },
+    { name = "tokenizers" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1a/90/b2f31527a5218a22e35c5ff615882ef9eba3cafa78d0e8645accd6a6549a/rapid_latex_ocr-0.0.6-py3-none-any.whl", hash = "sha256:7577604ead200183f4f6f2888c7061cab9ad19fa46f2f644be91808c5a954483", size = 11424, upload-time = "2023-12-10T12:38:07.226Z" },
 ]
 
 [[package]]
@@ -2958,6 +2978,25 @@ dependencies = [
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/55/ed/0ee9b9281986974be9d2406ae0134c8d7c91d2fc613f16ffda9701eeda6f/rapidocr-3.9.2-py3-none-any.whl", hash = "sha256:04d6b8d151f823d930bd91910555f57bea897c0c44fa6794267b94cf9c1ef9a0", size = 27275208, upload-time = "2026-07-21T10:59:01.599Z" },
+]
+
+[[package]]
+name = "rapidocr-onnxruntime"
+version = "1.4.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "onnxruntime" },
+    { name = "opencv-python" },
+    { name = "pillow" },
+    { name = "pyclipper" },
+    { name = "pyyaml" },
+    { name = "shapely" },
+    { name = "six" },
+    { name = "tqdm" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ba/12/1e5497183bdbe782dbb91bad1d0d2297dba4d2831b2652657f7517bfc6df/rapidocr_onnxruntime-1.4.4-py3-none-any.whl", hash = "sha256:971d7d5f223a7a808662229df1ef69893809d8457d834e6373d3854bc1782cbf", size = 14915192, upload-time = "2025-01-17T01:48:25.104Z" },
 ]
 
 [[package]]
