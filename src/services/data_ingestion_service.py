@@ -1,33 +1,143 @@
+import os
 import sys
 import asyncio
-from functools import partial
-from typing import List
-from langchain_docling import DoclingLoader
-from langchain_docling.loader import ExportType
+from functools import lru_cache
+from typing import List, Literal, Iterator, AsyncIterator
+
+import pymupdf
+import pymupdf4llm
+from PIL import Image
+import numpy as np
+from rapid_latex_ocr import LatexOCR
+import rapid_latex_ocr.main
+from rapidocr_onnxruntime import RapidOCR
+
 from docling.document_converter import DocumentConverter, PdfFormatOption, ImageFormatOption
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.datamodel.base_models import InputFormat
-from docling.datamodel.accelerator_options import (
-    AcceleratorOptions,
-)
+from docling.datamodel.accelerator_options import AcceleratorOptions
+
+from langchain_docling import DoclingLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-import os
+from langchain_core.document_loaders import BaseLoader
+
+from langfuse import observe
 from src.retrievers.pinecone_retriever import Retriever
 from src.domain.config_entities import DataIngestionConfig
 from src.domain.artifacts import DataIngestionArtifact
 from src.core.constants import DATA_INGEST_NUM_OF_WORKERS
 from src.core.logger import logger
 from src.core.exceptions import MyException
-from langfuse import observe
-from functools import lru_cache
 
 
-@lru_cache
+# --- Monkey-patch for NumPy 2.x and array/PIL compatibility in rapid_latex_ocr ---
+def _patched_loop_image_resizer(self, img):
+    if isinstance(img, np.ndarray):
+        pillow_img = Image.fromarray(img)
+    elif isinstance(img, Image.Image):
+        pillow_img = img
+    else:
+        pillow_img = Image.open(img).convert("RGB")
+
+    pad_img = self.pre_pro.pad(pillow_img)
+    input_image = self.pre_pro.minmax_size(pad_img).convert("RGB")
+    r, w, h = 1, input_image.size[0], input_image.size[1]
+    for _ in range(10):
+        h = int(h * r)
+        final_img, pad_img = self.pre_process(input_image, r, w, h)
+
+        resizer_res = self.image_resizer([final_img.astype(np.float32)])[0]
+
+        argmax_idx = int(np.asarray(np.argmax(resizer_res, axis=-1)).flat[0])
+        w = (argmax_idx + 1) * 32
+        if w == pad_img.size[0]:
+            break
+
+        r = w / pad_img.size[0]
+    return final_img
+
+rapid_latex_ocr.main.LatexOCR.loop_image_resizer = _patched_loop_image_resizer
+
+
+@lru_cache(maxsize=1)
+def get_shared_latex_ocr() -> LatexOCR:
+    """Return the cached LaTeX OCR model, downloading it on first initialization."""
+    logger.info("Initializing shared LaTeX OCR model...")
+    model = LatexOCR()
+    logger.info("Shared LaTeX OCR model initialized successfully.")
+    return model
+
+
+@lru_cache(maxsize=1)
+def get_shared_rapid_ocr() -> RapidOCR:
+    """Return the cached RapidOCR engine, downloading it on first initialization."""
+    logger.info("Initializing shared RapidOCR model...")
+    engine = RapidOCR()
+    logger.info("Shared RapidOCR model initialized successfully.")
+    return engine
+
+
+class CustomLoader(BaseLoader):
+    """Custom document loader supporting PDFs, raw image OCR, and LaTeX equation parsing."""
+
+    def __init__(
+        self,
+        file_path: str,
+        pdf_extraction_strategy: Literal["native", "markdown"] = "native",
+        image_extraction_strategy: Literal["ocr", "latex"] = "ocr",
+    ) -> None:
+        self.file_path = file_path
+        self.pdf_extraction_strategy = pdf_extraction_strategy
+        self.image_extraction_strategy = image_extraction_strategy
+
+    def _is_image(self) -> bool:
+        image_extensions = {".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tiff"}
+        _, ext = os.path.splitext(self.file_path)
+        return ext.lower() in image_extensions
+
+    def lazy_load(self) -> Iterator[Document]:
+        if self._is_image():
+            if self.image_extraction_strategy == "latex":
+                model = get_shared_latex_ocr()
+                latex_code, _ = model(self.file_path)
+                metadata = {"source": self.file_path, "type": "image_latex"}
+                yield Document(page_content=latex_code or "", metadata=metadata)
+            else:
+                engine = get_shared_rapid_ocr()
+                result, _ = engine(self.file_path)
+                text = "\n".join([line[1] for line in result]) if result else ""
+                metadata = {"source": self.file_path, "type": "image_ocr"}
+                yield Document(page_content=text, metadata=metadata)
+            return
+
+        if self.pdf_extraction_strategy == "markdown":
+            md_text = pymupdf4llm.to_markdown(self.file_path)
+            metadata = {"source": self.file_path, "type": "pdf_markdown"}
+            yield Document(page_content=md_text, metadata=metadata)
+        else:
+            with pymupdf.open(self.file_path) as doc:
+                total_pages = len(doc)
+                for page_num, page in enumerate(doc):
+                    text = page.get_text()
+                    metadata = {
+                        "source": self.file_path,
+                        "page": page_num + 1,
+                        "total_pages": total_pages,
+                    }
+                    yield Document(page_content=text, metadata=metadata)
+
+    async def alazy_load(self) -> AsyncIterator[Document]:
+        loop = asyncio.get_running_loop()
+        docs = await loop.run_in_executor(None, lambda: list(self.lazy_load()))
+        for doc in docs:
+            yield doc
+
+
+@lru_cache(maxsize=1)
 def get_shared_docling_converter() -> DocumentConverter:
-    """Return a cached singleton instance of DocumentConverter to prevent re-instantiating models per request."""
+    """Return a cached singleton instance of DocumentConverter."""
     logger.info("Initializing global Docling DocumentConverter singleton...")
-    # 1. PDF Pipeline Options (Image extraction, table structure, and layout ML models disabled for ultra-fast native extraction)
     pdf_pipeline_options = PdfPipelineOptions()
     pdf_pipeline_options.do_ocr = False
     pdf_pipeline_options.do_table_structure = False
@@ -36,31 +146,30 @@ def get_shared_docling_converter() -> DocumentConverter:
     pdf_pipeline_options.generate_picture_images = False
     pdf_pipeline_options.do_formula_enrichment = False
     pdf_pipeline_options.accelerator_options = AcceleratorOptions(
-    num_threads=DATA_INGEST_NUM_OF_WORKERS,  # adjust based on your CPU cores
-    device="auto"   # "cuda" if GPU is available
+        num_threads=DATA_INGEST_NUM_OF_WORKERS,
+        device="auto",
     )
 
-    # 2. Image Pipeline Options (Layout model, OCR, and LaTeX formula enrichment enabled for math questions)
     image_pipeline_options = PdfPipelineOptions()
     image_pipeline_options.do_ocr = True
-    image_pipeline_options.do_formula_enrichment = True  # Equation & LaTeX decoding on
+    image_pipeline_options.do_formula_enrichment = True
     image_pipeline_options.do_picture_classification = True
     image_pipeline_options.generate_page_images = True
     image_pipeline_options.generate_picture_images = True
     image_pipeline_options.accelerator_options = AcceleratorOptions(
-        num_threads=DATA_INGEST_NUM_OF_WORKERS,  # adjust based on your CPU cores
-        device="auto"   # "cuda" if GPU is available
+        num_threads=DATA_INGEST_NUM_OF_WORKERS,
+        device="auto",
     )
 
-    _SHARED_DOCLING_CONVERTER = DocumentConverter(
+    _shared_docling_converter = DocumentConverter(
         allowed_formats=[InputFormat.PDF, InputFormat.IMAGE],
         format_options={
             InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options),
             InputFormat.IMAGE: ImageFormatOption(pipeline_options=image_pipeline_options),
-        }
+        },
     )
     logger.info("Global Docling DocumentConverter initialized successfully.")
-    return _SHARED_DOCLING_CONVERTER
+    return _shared_docling_converter
 
 
 class DataIngestion:
@@ -68,19 +177,11 @@ class DataIngestion:
         self.data_ingestion_config = data_ingestion_config
         self.retriever = retriever
         self.custom_converter = get_shared_docling_converter()
-
         logger.debug("DataIngestion initialized for %d files", len(data_ingestion_config.files_path))
 
     @staticmethod
     def _inject_filename_metadata(documents: List[Document], file_path: str, namespace: str) -> List[Document]:
-        """Inject a 'filename' key into every document's metadata.
-
-        The stored value is ``{namespace}_{original_filename}`` so that each
-        file is uniquely addressable per thread/namespace in Pinecone.
-        This allows the retriever to filter by filename when the user
-        mentions ``@filename`` in the chat.
-        """
-        
+        """Inject a unique 'filename' key into each document's metadata."""
         original_name = os.path.basename(file_path)
         tagged_name = f"{namespace}_{original_name}" if namespace else original_name
         for doc in documents:
@@ -94,10 +195,17 @@ class DataIngestion:
         return documents
 
     @observe(name="docling_file_loader")
-    async def get_loader(self) -> List[DoclingLoader]:
+    async def get_loader(self) -> List[CustomLoader]:
         try:
             logger.info("Initializing loaders for %d input files", len(self.data_ingestion_config.files_path))
-            loaders = [DoclingLoader(file_path=fp,converter=self.custom_converter,export_type=ExportType.MARKDOWN) for fp in self.data_ingestion_config.files_path]
+            loaders = [
+                CustomLoader(
+                    file_path=fp,
+                    pdf_extraction_strategy="native",
+                    image_extraction_strategy="latex",
+                )
+                for fp in self.data_ingestion_config.files_path
+            ]
             logger.info("Created %d file loaders", len(loaders))
             return loaders
         except Exception as e:
@@ -136,13 +244,9 @@ class DataIngestion:
             all_documents: List[Document] = []
 
             namespace = self.data_ingestion_config.namespace or ""
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
 
-            # DoclingLoader.load() is CPU-heavy + synchronous (PDF parsing, OCR,
-            # table extraction). Run each loader in a thread-pool executor so the
-            # async event loop is never blocked. Multiple files are loaded in
-            # parallel via asyncio.gather().
-            async def load_one(file_path: str, loader) -> List[Document]:
+            async def load_one(file_path: str, loader: CustomLoader) -> List[Document]:
                 docs = await loop.run_in_executor(None, loader.load)
                 return self._inject_filename_metadata(
                     documents=docs,
