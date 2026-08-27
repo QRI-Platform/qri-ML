@@ -1,53 +1,61 @@
-import logging
 import os
-from logging.handlers import RotatingFileHandler
+import sys
+import atexit
+import logging
+from queue import Queue
 from datetime import datetime
+from logging.handlers import RotatingFileHandler, QueueHandler, QueueListener
 from src.core.constants import LOGS_DIR
 
 LOG_FILE = f"{datetime.now().strftime('%m_%d_%Y_%H_%M_%S')}.log"
-MAX_FOLDER_SIZE = 2 * 1024 * 1024
-MAX_LOG_SIZE = 5 * 1024 * 1024
+MAX_LOG_SIZE = 5 * 1024 * 1024  # 5 MB
+BACKUP_COUNT = 3
 
 os.makedirs(LOGS_DIR, exist_ok=True)
 log_file_path = os.path.join(LOGS_DIR, LOG_FILE)
 
 
-def cleanup_logs():
-    if not os.path.exists(LOGS_DIR):
-        return
-    files = [os.path.join(LOGS_DIR, f) for f in os.listdir(LOGS_DIR) if f.endswith(".log")]
-    files.sort(key=os.path.getmtime)
-    total_size = sum(os.path.getsize(f) for f in files)
-    while total_size > MAX_FOLDER_SIZE and files:
-        oldest_file = files.pop(0)
-        file_size = os.path.getsize(oldest_file)
-        try:
-            os.remove(oldest_file)
-            total_size -= file_size
-        except Exception:
-            break
-
-
-def configure_logger():
-    cleanup_logs() # cleaning pre-saved logs 
+def configure_non_blocking_logger():
+    # 1. Main Logger instance
     _logger = logging.getLogger("app")
-    _logger.setLevel(logging.DEBUG) # setting up the logger level to debug
-    formatter = logging.Formatter("[ %(asctime)s ] %(name)s - %(levelname)s - %(message)s") # fixed formate logs saving
+    _logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("[ %(asctime)s ] %(name)s - %(levelname)s - %(message)s")
 
-    file_handler = RotatingFileHandler(log_file_path, maxBytes=MAX_LOG_SIZE, backupCount=3) # maintaining roatioin to delete previous logs automatically and saves exceeding of server storage
+    # 2. Worker Handlers (Inko direct logger me nahi jodna, ye background thread chalayega)
+    file_handler = RotatingFileHandler(
+        log_file_path,
+        maxBytes=MAX_LOG_SIZE,
+        backupCount=BACKUP_COUNT,
+        encoding="utf-8"
+    )
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.DEBUG)
 
-    console_handler = logging.StreamHandler() # for console print/output
+    console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     console_handler.setLevel(logging.INFO)
 
-    # combining file_handler and console loggers in one
+    # 3. Lock-free in-memory Queue
+    log_queue = Queue(-1)
+
+    # 4. Logger par SIRF QueueHandler lagega (Main thread sirf RAM me object push karega)
+    queue_handler = QueueHandler(log_queue)
     _logger.handlers.clear()
-    _logger.addHandler(file_handler)
-    _logger.addHandler(console_handler)
+    _logger.addHandler(queue_handler)
+
+    # 5. Dedicated Background Worker Thread jo Terminal & File dono handle karega
+    listener = QueueListener(
+        log_queue,
+        file_handler,
+        console_handler,
+        respect_handler_level=True
+    )
+    listener.start()
+
+    # Server shutdown par queue properly flush hokar close ho
+    atexit.register(listener.stop)
+
     return _logger
 
 
-logger = configure_logger()
-logger.info("Logger initialized. Logging to %s", log_file_path)
+logger = configure_non_blocking_logger()
