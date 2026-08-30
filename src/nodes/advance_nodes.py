@@ -4,14 +4,16 @@ from src.core.exceptions import MyException
 from src.domain.state import State
 from src.llm.llm_loader import get_llm
 from src.retrievers.pinecone_retriever import get_retriever
-from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, DEFAULT_INDEX_NAME
+from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, DEFAULT_INDEX_NAME,MAX_TOOL_CALL_LIMIT
 from src.prompts.templates import SUMMARIZER_PROMPT
 from langchain_core.messages import RemoveMessage, HumanMessage,SystemMessage
 from src.domain.config_entities import RetrieverConfig
 from langchain_core.runnables import RunnableConfig
 from src.core.constants import LENGTH_OF_SUMMARY_GENERATED as NO_OF_WORDS_TO_SUMMARIZE
 from langfuse import observe
+from langchain.agents.middleware import ToolCallLimitMiddleware
 
+limit_mw=ToolCallLimitMiddleware(run_limit=MAX_TOOL_CALL_LIMIT,exit_behavior="end")
 
 @observe(name="summerizer_node")
 async def summerizer(state: State, config: RunnableConfig):
@@ -74,3 +76,14 @@ async def _cleanup_evicted_thread(thread_id: str):
         logger.info("Evicted thread=%s cleanup complete", thread_id)
     except Exception as e:
         logger.error("Cleanup failed for evicted thread=%s: %s", thread_id, str(e))
+
+
+
+@observe(name="tool_limit_node")
+async def tool_limit_check_node(state:State):
+    updated=await limit_mw.aafter_model(state=state) or {}
+
+    if updated.get("jump_to") == "end":
+        return {**updated,"jump_to":"end"}
+
+    return updated

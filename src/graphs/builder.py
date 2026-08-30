@@ -11,11 +11,12 @@ from src.nodes.main_nodes import (
     retreiver_node,
     chat_node,
 )
-from src.nodes.advance_nodes import summerizer, thread_manager_node
+from src.nodes.advance_nodes import summerizer, thread_manager_node,tool_limit_check_node
 from src.nodes.conditional_nodes import (
     route_entry,
     route_after_orchastrator,
     route_summary_node,
+    route_after_limit,
 )
 from src.core.memory import get_checkpointer, get_store
 from langgraph.prebuilt import ToolNode, tools_condition
@@ -36,6 +37,7 @@ def get_graph():
         workflow.add_node("retreiver_node", retreiver_node)
         workflow.add_node("chat_node", chat_node)
         workflow.add_node("summary_node", summerizer)
+        workflow.add_node("tool_limit_node",tool_limit_check_node)
         workflow.add_node("tool_node", ToolNode([solver, save_long_term_memory]))
         workflow.add_edge(START, "thread_manager_node")
 
@@ -66,9 +68,12 @@ def get_graph():
             "chat_node": "chat_node"
         })
         workflow.add_edge("summary_node", "chat_node")
-
+        workflow.add_conditional_edges("tool_limit_node",route_after_limit,{
+            "tools":"tool_node",
+            END:END
+        })
         workflow.add_conditional_edges("chat_node", tools_condition, {
-            "tools": "tool_node",
+            "tools": "tool_limit_node",
             END: END
         })
         workflow.add_edge("tool_node", "chat_node")
