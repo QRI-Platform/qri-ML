@@ -44,6 +44,8 @@ dependencies = [
     "pymupdf4llm>=1.28.2",
     "rapid-latex-ocr>=0.0.6",
     "rapidocr-onnxruntime>=1.4.4",
+    "pypdfium2>=5.13.0",
+    "docling-parse>=7.16.0",
 ]
 
 [tool.pytest.ini_options]

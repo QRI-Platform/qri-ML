@@ -1,4 +1,4 @@
-FROM python:3.14-slim
+FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y \
     libgl1 \
@@ -26,4 +26,4 @@ COPY . .
 EXPOSE 7860
 
 # Run application with uv
-CMD ["uv", "run", "main.py"]
+CMD ["uv", "run", "start"]
