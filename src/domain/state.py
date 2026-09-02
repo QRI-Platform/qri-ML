@@ -18,7 +18,7 @@ class OrchestratorOutput(BaseModel):
 
 
 class QueryGenerationOutput(BaseModel):
-    queries: List[str]
+    queries: List[str] = Field(description="write the user refined optimised queries for vector db search")
 
 
 class ChatOutput(BaseModel):
