@@ -225,3 +225,5 @@ data/app.db
 
 .file
 timeline.md
+
+*.env
