@@ -202,7 +202,7 @@ class DataIngestion:
                 CustomLoader(
                     file_path=fp,
                     pdf_extraction_strategy="native",
-                    image_extraction_strategy="latex",
+                    image_extraction_strategy="ocr",
                 )
                 for fp in self.data_ingestion_config.files_path
             ]
