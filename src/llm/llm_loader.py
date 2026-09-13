@@ -12,6 +12,7 @@ from src.core.logger import logger
 def get_llm(
     reasoning_format: Optional[str] = "parsed",  # "parsed" or "hidden" for tool-calling nodes
     reasoning_effort: Optional[str] = "medium",  # "low", "medium", "high"
+    streaming: bool = False,
 ) -> ChatGroq:
     try:
         logger.debug(
@@ -24,6 +25,7 @@ def get_llm(
         kwargs = {
             "model": LLM_MODEL_NAME,
             "api_key": cfg.groq_api_key,
+            "streaming": streaming,
         }
 
         if reasoning_format is not None:
