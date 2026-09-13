@@ -37,6 +37,12 @@ async def stream_chat(message: str, user_id: str, thread_id: str):
                     payload = json.dumps({"type": "tool_end", "tool": tool_name, "output": tool_output})
                     yield f"data:{payload}\n\n"
 
+                case "on_custom_event" if event.get("name") == "agent_stream":
+                    data = event.get("data", {})
+                    if isinstance(data, dict) and data.get("type"):
+                        payload = json.dumps(data)
+                        yield f"data:{payload}\n\n"
+
                 # 3. Model token stream (only stream tokens from response nodes to the user UI)
                 case "on_chat_model_stream":
                     langgraph_node = event.get("metadata", {}).get("langgraph_node")

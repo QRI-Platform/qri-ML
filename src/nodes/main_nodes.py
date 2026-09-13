@@ -24,6 +24,7 @@ from src.tools.retreiver_tool import retreiver
 from src.tools.save_long_term_memory_tool import save_long_term_memory
 from langchain.agents import create_agent
 from langchain.agents.middleware import ToolCallLimitMiddleware
+from langchain_core.callbacks.manager import adispatch_custom_event
 import re
 
 agent_tool_limit_middleware = ToolCallLimitMiddleware(run_limit=8, exit_behavior="end")
@@ -280,7 +281,7 @@ async def agent_node(state: State, config: RunnableConfig, store: BaseStore):
             "max_words": LLM_OUTPUT_MAX_WORDS,
         }).to_string()
         agent = create_agent(
-            model=get_llm(),
+            model=get_llm(streaming=True),
             tools=[solver, save_long_term_memory,retreiver],
             middleware=[agent_tool_limit_middleware],
             system_prompt=system_prompt,
@@ -291,7 +292,59 @@ async def agent_node(state: State, config: RunnableConfig, store: BaseStore):
             len(messages),
         )
 
-        result = await agent.ainvoke({"messages": messages}, config=config)
+        result = None
+        async for event in agent.astream_events(
+            {"messages": messages},
+            config=config,
+            version="v2",
+        ):
+            event_type = event.get("event")
+            event_data = event.get("data", {})
+
+            if event_type == "on_chat_model_stream":
+                chunk = event_data.get("chunk")
+                if chunk is not None:
+                    additional_kwargs = getattr(chunk, "additional_kwargs", {}) or {}
+                    reasoning = additional_kwargs.get("reasoning_content")
+                    content = getattr(chunk, "content", None)
+                    if reasoning:
+                        await adispatch_custom_event(
+                            "agent_stream",
+                            {"type": "reasoning", "content": reasoning},
+                            config=config,
+                        )
+                    if isinstance(content, str) and content:
+                        await adispatch_custom_event(
+                            "agent_stream",
+                            {"type": "token", "content": content},
+                            config=config,
+                        )
+            elif event_type == "on_tool_start":
+                await adispatch_custom_event(
+                    "agent_stream",
+                    {
+                        "type": "tool_start",
+                        "tool": event.get("name"),
+                        "input": event_data.get("input"),
+                    },
+                    config=config,
+                )
+            elif event_type == "on_tool_end":
+                await adispatch_custom_event(
+                    "agent_stream",
+                    {
+                        "type": "tool_end",
+                        "tool": event.get("name"),
+                        "output": str(event_data.get("output")),
+                    },
+                    config=config,
+                )
+            elif event_type == "on_chain_end" and isinstance(event_data.get("output"), dict):
+                output = event_data["output"]
+                if output.get("messages"):
+                    result = output
+
+        result = result or {"messages": messages}
         agent_messages = result.get("messages", [])
         new_messages = agent_messages[len(messages):]
         final_message = agent_messages[-1] if agent_messages else None
