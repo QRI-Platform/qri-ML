@@ -1,5 +1,6 @@
 import sys
 import asyncio
+from src import tools
 from src.core.logger import logger
 from src.core.exceptions import MyException
 from src.services.data_ingestion_service import DataIngestion
@@ -12,16 +13,20 @@ from src.core.memory import get_store
 from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.store.base import BaseStore
-from src.prompts.templates import QUERY_GENERATION_PROMPT, ORCHESTRATOR_PROMPT, CHAT_PROMPT, SUMMARY_NODE_PROMPT
+from src.prompts.templates import QUERY_GENERATION_PROMPT, ORCHESTRATOR_PROMPT, CHAT_PROMPT, SUMMARY_NODE_PROMPT, AGENT_PROMPT
 from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, LENGTH_OF_SUMMARY_GENERATED, MINIMUM_LENGTH_OF_LONG_TERM_MEMORY, DEFAULT_INDEX_NAME, LLM_OUTPUT_MAX_WORDS
 from src.domain.state import State, QueryGenerationOutput, OrchestratorOutput, OrchastratorOutput, ChatOutput
 from langfuse import observe
 from typing import Optional,List,Optional
 from langchain_core.messages import HumanMessage
 from src.tools.solver_tool import solver
+from src.tools.retreiver_tool import retreiver
 from src.tools.save_long_term_memory_tool import save_long_term_memory
-
+from langchain.agents import create_agent
+from langchain.agents.middleware import ToolCallLimitMiddleware
 import re
+
+agent_tool_limit_middleware = ToolCallLimitMiddleware(run_limit=8, exit_behavior="end")
 
 @observe(name="ingestion_node")
 async def ingestion_node(state: State, config: RunnableConfig):
@@ -41,7 +46,12 @@ async def ingestion_node(state: State, config: RunnableConfig):
         )
         await data_ingestion.ingest()
         logger.info("ingestion_node completed for thread=%s", thread_id)
-        return {}
+        return {
+            "messages": [
+                SystemMessage(content=f"user uploaded document: {file_name.split('/')[-1]}")
+                for file_name in file_paths
+            ]
+        }
     except Exception as e:
         logger.error("ingestion_node failed: %s", str(e))
         raise MyException(e, sys)
@@ -245,3 +255,55 @@ async def chat_node(state: State, config: RunnableConfig, store: BaseStore) -> d
 #     except Exception as e:
 #         logger.exception("Error occurred in summary node.")
 #         raise MyException(e, sys)
+
+
+
+
+@observe(name="agent_node")
+async def agent_node(state: State, config: RunnableConfig, store: BaseStore):
+    try:
+        user_id = config.get("configurable", {}).get("user_id", "unknown")
+        messages = state.get("messages", [])
+        user_memories = await store.asearch(("user", str(user_id), "details"))
+        user_stored_summary = (
+            "\n".join(
+                f"- {item.key}: {item.value.get('data')}"
+                for item in user_memories
+                if item.value
+            )
+            if user_memories
+            else "None"
+        )
+
+        system_prompt = AGENT_PROMPT.invoke({
+            "user_memories": user_stored_summary,
+            "max_words": LLM_OUTPUT_MAX_WORDS,
+        }).to_string()
+        agent = create_agent(
+            model=get_llm(),
+            tools=[solver, save_long_term_memory,retreiver],
+            middleware=[agent_tool_limit_middleware],
+            system_prompt=system_prompt,
+        )
+        logger.info(
+            "agent_node started for user=%s, messages_count=%d",
+            user_id,
+            len(messages),
+        )
+
+        result = await agent.ainvoke({"messages": messages}, config=config)
+        agent_messages = result.get("messages", [])
+        new_messages = agent_messages[len(messages):]
+        final_message = agent_messages[-1] if agent_messages else None
+        response_text = (
+            final_message.content
+            if final_message is not None and isinstance(final_message.content, str)
+            else str(final_message.content)
+            if final_message is not None
+            else ""
+        )
+
+        return {"messages": new_messages, "ai_response": response_text}
+    except Exception as e:
+        logger.error("agent_node failed: %s", str(e))
+        raise MyException(e, sys)

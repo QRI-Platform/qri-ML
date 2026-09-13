@@ -15,3 +15,8 @@ SUMMARIZER_PROMPT = ChatPromptTemplate.from_messages(load_prompt("SUMMARIZER_PRO
 SUMMARY_NODE_PROMPT = SUMMARIZER_PROMPT
 
 CHAT_PROMPT = ChatPromptTemplate.from_messages(load_prompt("CHAT_PROMPT"))
+
+AGENT_PROMPT = ChatPromptTemplate.from_messages(load_prompt("AGENT_PROMPT"))
+
+
+

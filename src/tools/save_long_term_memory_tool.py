@@ -16,14 +16,15 @@ async def save_long_term_memory(
     config: Annotated[RunnableConfig, InjectedToolArg],
     store: Annotated[BaseStore, InjectedStore()],
 ) -> str:
-    """Save an important, persistent personal detail, preference, or fact about the user into long-term memory.
-    
-    Use this tool whenever the user explicitly shares personal information, facts, preferences, 
-    or background context (e.g., job role, skills, location, habits, project details) that should be remembered across conversations.
-    
+    """Save an important, persistent user detail in long-term memory.
+
+    Use this tool when the user explicitly shares a personal fact, preference, background detail,
+    or project context that should be remembered in future conversations. Do not save temporary
+    questions, one-off instructions, or information that belongs only in the current turn.
+
     Args:
-        memory_key: A concise, descriptive snake_case identifier for the memory (e.g., 'user_role', 'favorite_framework', 'preferred_language').
-        memory_value: The specific detail or preference to store (e.g., 'FastAPI developer', 'Ubuntu Linux', 'Python').
+        memory_key: A concise snake_case identifier such as 'user_role' or 'favorite_framework'.
+        memory_value: The specific user detail to remember, such as 'FastAPI developer'.
     """
     try:
         user_id = config.get("configurable", {}).get("user_id", "unknown")

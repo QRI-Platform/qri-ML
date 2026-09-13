@@ -14,14 +14,15 @@ async def solver(
     expression: str,
     config: Annotated[RunnableConfig, InjectedToolArg] = None,
 ) -> str:
-    """Calculate mathematical and arithmetic expressions accurately using Python's numexpr engine.
+    """Calculate a mathematical expression accurately using Python's numexpr engine.
 
-    Use this tool whenever you need to compute complex arithmetic, powers, trigonometric values, 
-    logarithms, or multi-step numeric calculations.
+    Use this tool whenever the user asks for arithmetic, powers, trigonometry, logarithms,
+    or any other numeric calculation. Do not calculate manually when this tool can provide
+    an exact result.
 
     Args:
-        expression: A valid single-line mathematical expression string (e.g., '2 + 2', 'sqrt(144) + 5**2', 'sin(pi/2) + log(e)'). 
-                    Do NOT pass Python variable assignments, imports, or multi-line code.
+        expression: A valid single-line expression such as '2 + 2' or 'sqrt(144) + 5**2'.
+            Do not pass assignments, imports, or multi-line code.
     """
     try:
         cleaned_expr = expression.strip().replace("`", "").replace('"', '').replace("'", "")
