@@ -42,7 +42,7 @@ async def summerizer(state: State, config: RunnableConfig):
             "no_of_words": NO_OF_WORDS_TO_SUMMARIZE
         })
 
-        llm = get_llm(reasoning_format="hidden", reasoning_effort="low")
+        llm = get_llm(reasoning_format=None, reasoning_effort=None)
         response = await llm.ainvoke(summary_messages)
 
         # deleting summerized messages
