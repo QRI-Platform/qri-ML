@@ -9,6 +9,7 @@ from src.graphs.builder import get_graph
 from src.domain.state import State
 from langfuse import observe, propagate_attributes
 from langfuse.langchain import CallbackHandler
+from src.llm.llm_loader import get_llm
 
 
 class GraphRunnerPipeline(Pipeline):
@@ -17,7 +18,7 @@ class GraphRunnerPipeline(Pipeline):
         logger.info("GraphRunnerPipeline initialized")
 
     @observe(name="GraphRunnerPipeline.initiate")
-    async def initiate(self, user_id: str, thread_id: str, file_paths: list = None, message: str = None):
+    async def initiate(self, user_id: str, thread_id: str, file_paths: list = None, message: str = None,need_title:bool=False):
         try:
             logger.info("Pipeline.initiate called: user=%s thread=%s files=%d message=%s",
                         user_id, thread_id, len(file_paths or []), bool(message))
@@ -26,13 +27,16 @@ class GraphRunnerPipeline(Pipeline):
                 state = {
                     "file_paths": file_paths or [],
                     "messages": [HumanMessage(content=message)] if message else [],
+                    "need_title": need_title
                 }
             else:
                 state = {
                     "file_paths": file_paths or [],
                     "messages": [HumanMessage(content=message)] if message else [],
-                    "has_documents":True
+                    "has_documents":True,
+                    "need_title": need_title
                 }
+                
 
             callbacks = []
             try:
@@ -54,7 +58,8 @@ class GraphRunnerPipeline(Pipeline):
             logger.error("Pipeline.initiate failed: %s", str(e))
             raise MyException(e, sys)
 
-    
+
+
 
 @lru_cache
 def get_graph_runner_pipeline() -> GraphRunnerPipeline:
