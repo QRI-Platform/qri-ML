@@ -168,3 +168,44 @@ async def run_workflow(request: Request, payload: ChatRequest):
         logger.error("chat endpoint failed: %s", str(e))
         raise HTTPException(status_code=400, detail={"success": False, "message": str(e), "data": None})
 
+
+
+
+@router.get("/chat_rename", summary="Generate a title for a chat thread")
+async def rename_chat_thread(request: Request):
+    """
+    Rename the current chat thread for the user.
+
+    ### Authentication
+    Pass `user_id` and `thread_id` as query params or headers (`x-user-id`, `x-thread-id`).
+
+    ### Request
+    - **Query Parameter:** `new_thread_name` (string) — the new name for the chat thread.
+
+    ### Response
+    - **200 OK:** Successfully renamed the chat thread.
+    - **400 Bad Request:** Invalid input or renaming failed.
+    - **401 Unauthorized:** Missing or invalid user_id / thread_id.
+    """
+    try:
+        logger.info("rename_chat_thread endpoint: user=%s thread=%s",
+                    request.state.user_id, request.state.thread_id)
+        pipeline = get_graph_runner_pipeline()
+        title = None
+        async for event in pipeline.initiate(
+            user_id=request.state.user_id,
+            thread_id=request.state.thread_id,
+            need_title=True,
+        ):
+            if event.get("event") == "on_chain_end" and event.get("name") == "title_renamer_node":
+                output = event.get("data", {}).get("output", {})
+                if isinstance(output, dict) and isinstance(output.get("title"), str):
+                    title = output["title"].strip()
+
+        if not title:
+            raise HTTPException(status_code=400, detail="Could not generate a title")
+        logger.info("rename_chat_thread endpoint: completed for thread=%s", request.state.thread_id)
+        return JSONResponse(content={"success": True, "message": "Thread renamed successfully", "data": {"title": title}}, status_code=200)
+    except Exception as e:
+        logger.error("rename_chat_thread endpoint failed: %s", str(e))
+        raise HTTPException(status_code=400, detail={"success": False, "message": str(e), "data": None})

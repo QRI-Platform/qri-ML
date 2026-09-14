@@ -11,6 +11,8 @@ from langgraph.graph import END
 def route_entry(state: State) -> str:
     if state.get("file_paths"):
         return "ingestion_node"
+    if state.get("need_title",False):
+        return "title_renamer_node"
     return "summary_node"
 
 
@@ -33,3 +35,5 @@ def route_after_limit(state:State):
     if state.get("jump_to") == "end":
         return END
     return tools_condition(state)
+
+

@@ -33,6 +33,7 @@ class State(TypedDict):
     queries: List[str]
     retreived_results: List[Any]
     ai_response: Optional[str]
+    need_title:bool = False
 
 
 Orchestrator_output = OrchestratorOutput

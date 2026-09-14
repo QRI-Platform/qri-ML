@@ -12,7 +12,7 @@ from src.nodes.main_nodes import (
     retreiver_node,
     chat_node,
 )
-from src.nodes.advance_nodes import summerizer, thread_manager_node,tool_limit_check_node
+from src.nodes.advance_nodes import summerizer, thread_manager_node,tool_limit_check_node,title_renamer_node
 from src.nodes.conditional_nodes import (
     route_entry,
     route_after_orchastrator,
@@ -105,10 +105,13 @@ def get_graph():
         workflow.add_node("agent_node", agent_node)
         workflow.add_node("summary_node", summerizer)
         workflow.add_node("ingestion_node", ingestion_node)
+        workflow.add_node("title_renamer_node", title_renamer_node)
         workflow.add_conditional_edges(START, route_entry, {
             "summary_node": "summary_node",
-            "ingestion_node": "ingestion_node"
+            "ingestion_node": "ingestion_node",
+            "title_renamer_node": "title_renamer_node"
         })
+        workflow.add_edge("title_renamer_node", END)
         workflow.add_edge("summary_node", "agent_node")
         workflow.add_edge("agent_node", END)
         workflow.add_edge("ingestion_node", END)
