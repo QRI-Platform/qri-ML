@@ -14,7 +14,7 @@ from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.store.base import BaseStore
 from src.prompts.templates import QUERY_GENERATION_PROMPT, ORCHESTRATOR_PROMPT, CHAT_PROMPT, SUMMARY_NODE_PROMPT, AGENT_PROMPT
-from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, LENGTH_OF_SUMMARY_GENERATED, MINIMUM_LENGTH_OF_LONG_TERM_MEMORY, DEFAULT_INDEX_NAME, LLM_OUTPUT_MAX_WORDS
+from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, LENGTH_OF_SUMMARY_GENERATED, MINIMUM_LENGTH_OF_LONG_TERM_MEMORY, DEFAULT_INDEX_NAME, LLM_OUTPUT_MAX_WORDS,MAX_TOOL_CALL_LIMIT
 from src.domain.state import State, QueryGenerationOutput, OrchestratorOutput, OrchastratorOutput, ChatOutput
 from langfuse import observe
 from typing import Optional,List,Optional
@@ -27,7 +27,8 @@ from langchain.agents.middleware import ToolCallLimitMiddleware
 from langchain_core.callbacks.manager import adispatch_custom_event
 import re
 
-agent_tool_limit_middleware = ToolCallLimitMiddleware(run_limit=8, exit_behavior="end")
+
+agent_tool_limit_middleware = ToolCallLimitMiddleware(run_limit=MAX_TOOL_CALL_LIMIT, exit_behavior="end")
 
 @observe(name="ingestion_node")
 async def ingestion_node(state: State, config: RunnableConfig):
@@ -266,6 +267,7 @@ async def agent_node(state: State, config: RunnableConfig, store: BaseStore):
         user_id = config.get("configurable", {}).get("user_id", "unknown")
         messages = state.get("messages", [])
         user_memories = await store.asearch(("user", str(user_id), "details"))
+
         user_stored_summary = (
             "\n".join(
                 f"- {item.key}: {item.value.get('data')}"

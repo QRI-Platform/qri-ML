@@ -15,11 +15,11 @@ import json
 router = APIRouter(dependencies=[Depends(authenticate_user)])
 
 
-async def stream_chat(message: str, user_id: str, thread_id: str):
+async def stream_chat(message: str, user_id: str, thread_id: str, metadata: dict = {}) -> Any:
     try:
         logger.info("stream_chat started: user=%s thread=%s", user_id, thread_id)
         pipeline = get_graph_runner_pipeline()
-        async for event in pipeline.initiate(user_id=user_id, thread_id=thread_id, message=message):
+        async for event in pipeline.initiate(user_id=user_id, thread_id=thread_id, message=message, metadata=metadata):
             event_type = event.get("event")
 
             match event_type:
@@ -161,7 +161,7 @@ async def run_workflow(request: Request, payload: ChatRequest):
     try:
         logger.info("chat endpoint: user=%s thread=%s", request.state.user_id, request.state.thread_id)
         return StreamingResponse(
-            stream_chat(payload.message, request.state.user_id, request.state.thread_id),
+            stream_chat(payload.message, request.state.user_id, request.state.thread_id, payload.metadata),
             media_type="text/event-stream",
         )
     except Exception as e:
