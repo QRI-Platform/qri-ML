@@ -28,7 +28,7 @@ async def save_long_term_memory(
     """
     try:
         user_id = config.get("configurable", {}).get("user_id", "unknown")
-        max_long_term_memory_cap = config.get("configurable", {}).get("metadata", {}).get("long_term_memory_cap", 5)
+        max_long_term_memory_cap = config.get("configurable", {}).get("metadata", {}).get("plan", {}).get("long_term_memory_cap", 5)
         # Clean and normalize the key
         key_name = memory_key.strip().lower().replace(" ", "_").replace("-", "_")
         cleaned_value = memory_value.strip()
