@@ -18,7 +18,7 @@ class GraphRunnerPipeline(Pipeline):
         logger.info("GraphRunnerPipeline initialized")
 
     @observe(name="GraphRunnerPipeline.initiate")
-    async def initiate(self, user_id: str, thread_id: str, file_paths: list = None, message: str = None,need_title:bool=False):
+    async def initiate(self, user_id: str, thread_id: str, file_paths: list = None, message: str = None,metadata: dict = {}, need_title: bool = False):
         try:
             logger.info("Pipeline.initiate called: user=%s thread=%s files=%d message=%s",
                         user_id, thread_id, len(file_paths or []), bool(message))
@@ -45,7 +45,7 @@ class GraphRunnerPipeline(Pipeline):
                 logger.warning("Could not initialize Langfuse callback handler: %s", fe)
 
             config = {
-                "configurable": {"thread_id": thread_id, "user_id": user_id},
+                "configurable": {"thread_id": thread_id, "user_id": user_id, "metadata": metadata},
                 "callbacks": callbacks,
             }
             logger.debug("Streaming graph events with config=%s", config)

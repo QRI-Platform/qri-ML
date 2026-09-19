@@ -28,7 +28,7 @@ async def save_long_term_memory(
     """
     try:
         user_id = config.get("configurable", {}).get("user_id", "unknown")
-        
+        max_long_term_memory_cap = config.get("configurable", {}).get("metadata", {}).get("long_term_memory_cap", 5)
         # Clean and normalize the key
         key_name = memory_key.strip().lower().replace(" ", "_").replace("-", "_")
         cleaned_value = memory_value.strip()
@@ -37,6 +37,12 @@ async def save_long_term_memory(
             logger.warning("Skipping invalid memory_key: '%s'", memory_key)
             return "Failed: Invalid memory key provided."
 
+        logger.info("Checking no of stored long-term memory for user %s", user_id)
+        user_memories = await store.asearch(("user", str(user_id), "details"))
+
+        if len(user_memories) >= max_long_term_memory_cap and key_name not in user_memories:
+            logger.warning("User %s has reached the long-term memory cap of %d", user_id, max_long_term_memory_cap)
+            return f"Failed: Long-term memory cap of {max_long_term_memory_cap} reached. Please delete some memories before adding new ones."
         logger.info("Storing long-term memory for user %s: %s = %s", user_id, key_name, cleaned_value)
 
         # Write directly to LangGraph Store
