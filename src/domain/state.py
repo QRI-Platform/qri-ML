@@ -25,16 +25,6 @@ class ChatOutput(BaseModel):
     response: str = Field(description="Answer to the user strictly in markdown formate including emojis if needed")
     
 
-class State(TypedDict):
-    messages: Annotated[List[AnyMessage], add_messages]
-    file_paths: List[str]
-    require_db_search: bool
-    has_documents: bool = False  # True when Pinecone namespace has vectors for this thread
-    queries: List[str]
-    retreived_results: List[Any]
-    ai_response: Optional[str]
-    need_title:bool = False
-
 
 
 # ================= Test-Generation ===============================
@@ -68,8 +58,33 @@ class Question(BaseModel):
 class Questions_generation_schema(BaseModel):
     questions: List[Question] = Field(..., description="A sequence of game-ready questions")
 
-class Test_generation_State(BaseModel):
-    questions: Questions_generation_schema
+
+
+
+
+class State(TypedDict):
+    messages: Annotated[List[AnyMessage], add_messages]
+    file_paths: List[str]
+    require_db_search: bool
+    has_documents: bool = False  # True when Pinecone namespace has vectors for this thread
+    queries: List[str]
+    retreived_results: List[Any]
+    ai_response: Optional[str]
+    need_title:bool = False
+
+
+    # Test Generation logic
+    need_test_paper:bool=False
+    test_paper:Any = None
+    total_no_of_questions:int=10
+    no_of_easy_questions:int=2
+    no_of_medium_questions:int=4
+    no_of_hard_questions:int=4
+    level:Literal['easy','medium','hard']='medium'
+    subject_name:str="maths"
+    exam_type:str="IIT_JEE"
+
+
 
 
 

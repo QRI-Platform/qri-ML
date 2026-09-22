@@ -11,6 +11,7 @@ from src.nodes.main_nodes import (
     query_generation_node,
     retreiver_node,
     chat_node,
+    test_generation_node
 )
 from src.nodes.advance_nodes import summerizer, thread_manager_node,tool_limit_check_node,title_renamer_node
 from src.nodes.conditional_nodes import (
@@ -106,15 +107,18 @@ def get_graph():
         workflow.add_node("summary_node", summerizer)
         workflow.add_node("ingestion_node", ingestion_node)
         workflow.add_node("title_renamer_node", title_renamer_node)
+        workflow.add_node("test_generation_node",test_generation_node)
         workflow.add_conditional_edges(START, route_entry, {
             "summary_node": "summary_node",
             "ingestion_node": "ingestion_node",
-            "title_renamer_node": "title_renamer_node"
+            "title_renamer_node": "title_renamer_node",
+            "test_generation_node":"test_generation_node"
         })
         workflow.add_edge("title_renamer_node", END)
         workflow.add_edge("summary_node", "agent_node")
         workflow.add_edge("agent_node", END)
         workflow.add_edge("ingestion_node", END)
+        workflow.add_edge("test_generation_node",END)
 
         graph = workflow.compile(checkpointer=get_checkpointer(), store=get_store())
         logger.info("LangGraph workflow compiled successfully")
