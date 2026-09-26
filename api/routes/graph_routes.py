@@ -1,4 +1,3 @@
-import sys
 from typing import List
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -212,8 +211,4 @@ async def rename_chat_thread(request: Request):
 
 
 
-@router.post("/generate_test_paper")
-async def generate_test_paper(payload:TestGenerationRequest):
-    """This is the test generation route which generates test_paper"""
-    pass
 

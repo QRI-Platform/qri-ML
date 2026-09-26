@@ -6,6 +6,7 @@ from src.pipelines.graph_runner_pipeline import get_graph_runner_pipeline
 from src.core.dependencies import connection_pool, close_connection_pool
 from api.routes.graph_routes import router as graph_router
 from api.routes.user_routes import router as UserRouter
+from api.routes.sub_graph_routes import router as SubGraphRouter
 
 
 
@@ -26,6 +27,13 @@ tags_metadata = [
             "LangGraph checkpointer, and long-term memory persisted in the BaseStore."
         ),
     },
+    {
+            "name": "SubGraph Pipeline",
+            "description": (
+                "LangGraph-powered subgraph endpoints for running specialized, "
+                "modular workflows within the SubGraph pipeline."
+            ),
+        },
 ]
 
 
@@ -61,3 +69,4 @@ app = FastAPI(
 
 app.include_router(graph_router, prefix="/api/v1/graph", tags=["RAG Pipeline"])
 app.include_router(UserRouter, prefix="/api/v1/user", tags=["User & Conversation"])
+app.include_router(SubGraphRouter, prefix="/api/v1/subgraph", tags=["SubGraph Pipeline"])

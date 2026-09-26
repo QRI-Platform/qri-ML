@@ -24,14 +24,6 @@ class GraphRunnerPipeline(Pipeline):
                        message: str = None,
                        metadata: dict = {}, 
                        need_title: bool = False,
-                       need_test_paper:bool=False,
-                       total_no_of_questions:int=10,
-                       no_of_easy_questions:int=2,
-                       no_of_medium_questions:int=4,
-                       no_of_hard_questions:int=4,
-                       level:Literal['easy','medium','hard']='medium',
-                       subject_name:str="maths",
-                       exam_type:str="IIT_JEE"
                        ):
         try:
             logger.info("Pipeline.initiate called: user=%s thread=%s files=%d message=%s",
@@ -41,30 +33,14 @@ class GraphRunnerPipeline(Pipeline):
                 state = {
                     "file_paths": file_paths or [],
                     "messages": [HumanMessage(content=message)] if message else [],
-                    "need_title": need_title,
-                    "need_test_paper":need_test_paper,
-                    "total_no_of_questions":total_no_of_questions,
-                    "no_of_easy_questions":no_of_easy_questions,
-                    "no_of_medium_questions":no_of_medium_questions,
-                    "no_of_hard_questions":no_of_hard_questions,
-                    "level":level,
-                    "subject_name":subject_name,
-                    "exam_type":exam_type
+                    "need_title": need_title
                 }
             else:
                 state = {
                     "file_paths": file_paths or [],
                     "messages": [HumanMessage(content=message)] if message else [],
                     "has_documents":True,
-                    "need_title": need_title,
-                    "need_test_paper":need_test_paper,
-                    "total_no_of_questions":total_no_of_questions,
-                    "no_of_easy_questions":no_of_easy_questions,
-                    "no_of_medium_questions":no_of_medium_questions,
-                    "no_of_hard_questions":no_of_hard_questions,
-                    "level":level,
-                    "subject_name":subject_name,
-                    "exam_type":exam_type
+                    "need_title": need_title
                 }
                 
 
@@ -86,6 +62,52 @@ class GraphRunnerPipeline(Pipeline):
 
         except Exception as e:
             logger.error("Pipeline.initiate failed: %s", str(e))
+            raise MyException(e, sys)
+
+    @observe(name="GraphRunnerPipeline.initiate_test_generation")
+    async def initiate_test_generation(self,
+                       user_id:str,
+                       total_no_of_questions:int=2,
+                       level:Literal['easy','medium','hard']='medium',
+                       subject_name:str="maths",
+                       exam_type:str="IIT_JEE",
+                       ):
+        try:
+            need_test_paper: bool = True
+            thread_id = "None"
+
+            logger.info("Pipeline.initiate_test_generation called: user=%s thread=%s",
+                        user_id, thread_id)
+
+            state = {
+                "need_test_paper": need_test_paper,
+                "total_no_of_questions": total_no_of_questions,
+                "level": level,
+                "subject_name": subject_name,
+                "exam_type": exam_type,
+            }
+
+            callbacks = []
+            try:
+                callbacks.append(CallbackHandler())
+            except Exception as fe:
+                logger.warning("Could not initialize Langfuse callback handler: %s", fe)
+
+            config = {
+                "configurable": {
+                    "thread_id": thread_id,
+                    "user_id": user_id,
+                    "metadata": {},
+                },
+                "callbacks": callbacks,
+            }
+            logger.debug("Invoking test-generation graph with config=%s", config)
+
+            with propagate_attributes(session_id=thread_id, user_id=user_id):
+                return await self.graph.ainvoke(state, config=config)
+
+        except Exception as e:
+            logger.error("Pipeline.initiate_test_generation failed: %s", str(e))
             raise MyException(e, sys)
 
 

@@ -392,19 +392,22 @@ async def test_generation_node(state: State):
 
     """Generates a test paper based on the given test configuration."""
     logger.info("Entered in the test_generation_node")
-    llm = get_llm()
-    llm = llm.with_structured_output(Questions_generation_schema)
+    llm = get_llm(
+        reasoning_format=None,
+        reasoning_effort=None,
+        max_tokens=8192,
+    )
+    llm = llm.with_structured_output(
+        Questions_generation_schema
+    )
 
     chain = TEST_PAPER_GENERATION_PROMPT | llm
     logger.info("Generating test paper")
     results = await chain.ainvoke({
-        "total_no_of_questions": state.total_no_of_questions,
-        "no_of_easy_questions": state.no_of_easy_questions,
-        "no_of_medium_questions": state.no_of_medium_questions,
-        "no_of_hard_questions": state.no_of_hard_questions,
-        "level": state.level,
-        "subject_name": state.subject_name,
-        "exam_type": state.exam_type,
+        "total_no_of_questions": state["total_no_of_questions"],
+        "level": state["level"],
+        "subject_name": state["subject_name"],
+        "exam_type": state["exam_type"],
     })
     logger.info("Test_paper_generated")
 

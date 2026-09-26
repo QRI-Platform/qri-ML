@@ -35,9 +35,6 @@ Generate a test paper based strictly on the provided subject, exam type, difficu
 
 Requirements:
 - Generate exactly {total_no_of_questions} questions.
-- Easy questions: {no_of_easy_questions}
-- Medium questions: {no_of_medium_questions}
-- Hard questions: {no_of_hard_questions}
 - Question difficulty level: {level}
 - Subject: {subject_name}
 - Exam type: {exam_type}

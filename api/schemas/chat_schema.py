@@ -7,11 +7,8 @@ class ChatRequest(BaseModel):
 
 
 class TestGenerationRequest(BaseModel):
-    total_no_of_questions:int=Field(10,description=""),
-    no_of_easy_questions:int=Field(2,description=""),
-    no_of_medium_questions:int=Field(4,description=""),
-    no_of_hard_questions:int=Field(4,description=""),
-    level:Literal['easy','medium','hard']=Field('medium',description=""),
-    subject_name:str=Field("maths",description=""),
-    exam_type:str=Field("IIT_JEE",description="")
+    total_no_of_questions: int = Field(2, description="Number of questions to generate")
+    level: Literal['easy', 'medium', 'hard'] = Field('medium', description="Difficulty level of the questions")
+    subject_name: str = Field("maths", description="Subject for which questions should be generated")
+    exam_type: str = Field("IIT_JEE", description="Exam type the questions should match")
                            

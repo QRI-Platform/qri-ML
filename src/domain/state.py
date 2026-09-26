@@ -76,10 +76,7 @@ class State(TypedDict):
     # Test Generation logic
     need_test_paper:bool=False
     test_paper:Any = None
-    total_no_of_questions:int=10
-    no_of_easy_questions:int=2
-    no_of_medium_questions:int=4
-    no_of_hard_questions:int=4
+    total_no_of_questions:int=2
     level:Literal['easy','medium','hard']='medium'
     subject_name:str="maths"
     exam_type:str="IIT_JEE"

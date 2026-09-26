@@ -13,6 +13,7 @@ def get_llm(
     reasoning_format: Optional[str] = "parsed",  # "parsed" or "hidden" for tool-calling nodes
     reasoning_effort: Optional[str] = "medium",  # "low", "medium", "high"
     streaming: bool = False,
+    max_tokens: Optional[int] = None,
 ) -> ChatGroq:
     try:
         logger.debug(
@@ -33,6 +34,9 @@ def get_llm(
 
         if reasoning_effort is not None:
             kwargs["reasoning_effort"] = reasoning_effort
+
+        if max_tokens is not None:
+            kwargs["max_tokens"] = max_tokens
 
         llm = ChatGroq(**kwargs)
 
