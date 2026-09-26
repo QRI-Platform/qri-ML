@@ -10,7 +10,7 @@ from src.domain.state import State
 from langfuse import observe, propagate_attributes
 from langfuse.langchain import CallbackHandler
 from src.llm.llm_loader import get_llm
-
+from typing import Literal
 
 class GraphRunnerPipeline(Pipeline):
     def __init__(self):
@@ -18,7 +18,13 @@ class GraphRunnerPipeline(Pipeline):
         logger.info("GraphRunnerPipeline initialized")
 
     @observe(name="GraphRunnerPipeline.initiate")
-    async def initiate(self, user_id: str, thread_id: str, file_paths: list = None, message: str = None,metadata: dict = {}, need_title: bool = False):
+    async def initiate(self, user_id: str, 
+                       thread_id: str, 
+                       file_paths: list = None, 
+                       message: str = None,
+                       metadata: dict = {}, 
+                       need_title: bool = False,
+                       ):
         try:
             logger.info("Pipeline.initiate called: user=%s thread=%s files=%d message=%s",
                         user_id, thread_id, len(file_paths or []), bool(message))
@@ -56,6 +62,52 @@ class GraphRunnerPipeline(Pipeline):
 
         except Exception as e:
             logger.error("Pipeline.initiate failed: %s", str(e))
+            raise MyException(e, sys)
+
+    @observe(name="GraphRunnerPipeline.initiate_test_generation")
+    async def initiate_test_generation(self,
+                       user_id:str,
+                       total_no_of_questions:int=2,
+                       level:Literal['easy','medium','hard']='medium',
+                       subject_name:str="maths",
+                       exam_type:str="IIT_JEE",
+                       ):
+        try:
+            need_test_paper: bool = True
+            thread_id = "None"
+
+            logger.info("Pipeline.initiate_test_generation called: user=%s thread=%s",
+                        user_id, thread_id)
+
+            state = {
+                "need_test_paper": need_test_paper,
+                "total_no_of_questions": total_no_of_questions,
+                "level": level,
+                "subject_name": subject_name,
+                "exam_type": exam_type,
+            }
+
+            callbacks = []
+            try:
+                callbacks.append(CallbackHandler())
+            except Exception as fe:
+                logger.warning("Could not initialize Langfuse callback handler: %s", fe)
+
+            config = {
+                "configurable": {
+                    "thread_id": thread_id,
+                    "user_id": user_id,
+                    "metadata": {},
+                },
+                "callbacks": callbacks,
+            }
+            logger.debug("Invoking test-generation graph with config=%s", config)
+
+            with propagate_attributes(session_id=thread_id, user_id=user_id):
+                return await self.graph.ainvoke(state, config=config)
+
+        except Exception as e:
+            logger.error("Pipeline.initiate_test_generation failed: %s", str(e))
             raise MyException(e, sys)
 
 

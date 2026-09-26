@@ -13,6 +13,9 @@ def route_entry(state: State) -> str:
         return "ingestion_node"
     if state.get("need_title",False):
         return "title_renamer_node"
+
+    if state.get("need_test_paper",False):
+        return "test_generation_node"
     return "summary_node"
 
 

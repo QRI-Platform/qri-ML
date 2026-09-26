@@ -1,4 +1,3 @@
-import sys
 from typing import List
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -6,7 +5,7 @@ from fastapi.exceptions import HTTPException
 from src.core.logger import logger
 from src.core.exceptions import MyException
 from api.middlewares.multi_middleware import multer_middleware
-from api.schemas.chat_schema import ChatRequest
+from api.schemas.chat_schema import ChatRequest,TestGenerationRequest
 from api.middlewares.authentication_middleware import authenticate_user
 from src.pipelines.graph_runner_pipeline import get_graph_runner_pipeline
 from typing import Any
@@ -209,3 +208,7 @@ async def rename_chat_thread(request: Request):
     except Exception as e:
         logger.error("rename_chat_thread endpoint failed: %s", str(e))
         raise HTTPException(status_code=400, detail={"success": False, "message": str(e), "data": None})
+
+
+
+

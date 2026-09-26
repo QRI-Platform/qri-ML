@@ -13,9 +13,27 @@ from src.core.memory import get_store
 from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.store.base import BaseStore
-from src.prompts.templates import QUERY_GENERATION_PROMPT, ORCHESTRATOR_PROMPT, CHAT_PROMPT, SUMMARY_NODE_PROMPT, AGENT_PROMPT
-from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, LENGTH_OF_SUMMARY_GENERATED, MINIMUM_LENGTH_OF_LONG_TERM_MEMORY, DEFAULT_INDEX_NAME, LLM_OUTPUT_MAX_WORDS,MAX_TOOL_CALL_LIMIT
-from src.domain.state import State, QueryGenerationOutput, OrchestratorOutput, OrchastratorOutput, ChatOutput
+from src.prompts.templates import (QUERY_GENERATION_PROMPT,
+                                   ORCHESTRATOR_PROMPT,
+                                   CHAT_PROMPT, 
+                                   SUMMARY_NODE_PROMPT, 
+                                   AGENT_PROMPT,
+                                   TEST_PAPER_GENERATION_PROMPT
+                                   )
+from src.core.constants import (NO_OF_LAST_MESSAGES_TO_KEEP, 
+                                LENGTH_OF_SUMMARY_GENERATED, 
+                                MINIMUM_LENGTH_OF_LONG_TERM_MEMORY, 
+                                DEFAULT_INDEX_NAME, 
+                                LLM_OUTPUT_MAX_WORDS,
+                                MAX_TOOL_CALL_LIMIT
+                                )
+from src.domain.state import (State, 
+                              QueryGenerationOutput, 
+                              OrchestratorOutput, 
+                              OrchastratorOutput, 
+                              ChatOutput,
+                              Questions_generation_schema
+                              )
 from langfuse import observe
 from typing import Optional,List,Optional
 from langchain_core.messages import HumanMessage
@@ -362,3 +380,35 @@ async def agent_node(state: State, config: RunnableConfig, store: BaseStore):
     except Exception as e:
         logger.error("agent_node failed: %s", str(e))
         raise MyException(e, sys)
+
+
+
+
+
+# ====================== Test Generation SubGraph Nodes ==========================
+
+@observe(name="test_generation_node")
+async def test_generation_node(state: State):
+
+    """Generates a test paper based on the given test configuration."""
+    logger.info("Entered in the test_generation_node")
+    llm = get_llm(
+        reasoning_format=None,
+        reasoning_effort=None,
+        max_tokens=8192,
+    )
+    llm = llm.with_structured_output(
+        Questions_generation_schema
+    )
+
+    chain = TEST_PAPER_GENERATION_PROMPT | llm
+    logger.info("Generating test paper")
+    results = await chain.ainvoke({
+        "total_no_of_questions": state["total_no_of_questions"],
+        "level": state["level"],
+        "subject_name": state["subject_name"],
+        "exam_type": state["exam_type"],
+    })
+    logger.info("Test_paper_generated")
+
+    return {"test_paper": results}

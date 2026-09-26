@@ -23,3 +23,26 @@ async def authenticate_user(request: Request, user_id: str | None = None, thread
             status_code=401,
             detail={"success": False, "message": "Authentication failed", "data": None}
         )
+
+
+
+
+# takes user_id as input in the params or headers
+async def authenticate_only_user(request: Request, user_id: str | None = None):
+    try:
+        user_id = user_id or request.query_params.get("user_id") or request.headers.get("user_id") or request.headers.get("x-user-id")
+
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail={"success": False, "message": "user_id is required", "data": None}
+            )
+        request.state.user_id = user_id
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Authentication error: %s", e)
+        raise HTTPException(
+            status_code=401,
+            detail={"success": False, "message": "Authentication failed", "data": None}
+        )
