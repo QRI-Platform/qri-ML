@@ -25,28 +25,4 @@ AGENT_PROMPT = ChatPromptTemplate.from_messages(load_prompt("AGENT_PROMPT"))
 
 
 # ============================= Test Paper Generation SubGraph prompts ============================
-TEST_PAPER_GENERATION_PROMPT = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            """You are a professional exam question paper generator.
-
-Generate a test paper based strictly on the provided subject, exam type, difficulty distribution, and total number of questions.
-
-Requirements:
-- Generate exactly {total_no_of_questions} questions.
-- Question difficulty level: {level}
-- Subject: {subject_name}
-- Exam type: {exam_type}
-- Ensure the questions are relevant to the subject and appropriate for the specified exam type.
-- Maintain the requested difficulty distribution exactly.
-- Do not generate duplicate or substantially similar questions.
-- Do not include questions outside the specified subject.
-- Ensure each question is clear, unambiguous, and self-contained.
-- Return only the generated test paper in the required output format."""
-        )
-    ]
-)
-
-
-
+TEST_PAPER_GENERATION_PROMPT = ChatPromptTemplate.from_messages(load_prompt("TEST_PAPER_GENERATION_PROMPT"))
