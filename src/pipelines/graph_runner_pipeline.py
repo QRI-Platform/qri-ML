@@ -4,6 +4,7 @@ from langchain_core.messages import HumanMessage
 
 from src.core.logger import logger
 from src.core.exceptions import MyException
+from src.core.constants import DEFAULT_DEFFICULTY_LEVEL,DEFAULT_EXAM_TYPE,DEFAULT_SUBJECT_NAME,DEFAULT_TOTAL_NO_OF_QUESTIONS
 from src.domain.enums import Pipeline
 from src.graphs.builder import get_graph
 from src.domain.state import State
@@ -67,10 +68,10 @@ class GraphRunnerPipeline(Pipeline):
     @observe(name="GraphRunnerPipeline.initiate_test_generation")
     async def initiate_test_generation(self,
                        user_id:str,
-                       total_no_of_questions:int=2,
-                       level:Literal['easy','medium','hard']='medium',
-                       subject_name:str="maths",
-                       exam_type:str="IIT_JEE",
+                       total_no_of_questions:int=DEFAULT_TOTAL_NO_OF_QUESTIONS,
+                       level:str=DEFAULT_DEFFICULTY_LEVEL,
+                       subject_name:str=DEFAULT_SUBJECT_NAME,
+                       exam_type:str=DEFAULT_EXAM_TYPE,
                        ):
         try:
             need_test_paper: bool = True

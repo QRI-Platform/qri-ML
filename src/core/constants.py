@@ -52,4 +52,8 @@ MAX_TOOL_CALL_LIMIT:int = 3
 
 
 
-
+# ==================== Test Paper ======================================
+DEFAULT_TOTAL_NO_OF_QUESTIONS:int = 2
+DEFAULT_EXAM_TYPE:str = "IIT-JEE"
+DEFAULT_SUBJECT_NAME:str = "Maths"
+DEFAULT_DEFFICULTY_LEVEL:str = "Medium"

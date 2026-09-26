@@ -2,6 +2,8 @@ from pydantic import BaseModel, Field, field_validator
 from langchain_core.messages import AnyMessage
 from typing import Annotated, List, Optional, Any, TypedDict,Literal
 from langgraph.graph.message import add_messages
+from src.core.constants import DEFAULT_DEFFICULTY_LEVEL,DEFAULT_EXAM_TYPE,DEFAULT_SUBJECT_NAME,DEFAULT_TOTAL_NO_OF_QUESTIONS
+
 
 
 class OrchestratorOutput(BaseModel):
@@ -76,10 +78,10 @@ class State(TypedDict):
     # Test Generation logic
     need_test_paper:bool=False
     test_paper:Any = None
-    total_no_of_questions:int=2
-    level:Literal['easy','medium','hard']='medium'
-    subject_name:str="maths"
-    exam_type:str="IIT_JEE"
+    total_no_of_questions:int=DEFAULT_TOTAL_NO_OF_QUESTIONS
+    level:str=DEFAULT_DEFFICULTY_LEVEL
+    subject_name:str=DEFAULT_SUBJECT_NAME
+    exam_type:str=DEFAULT_EXAM_TYPE
 
 
 
