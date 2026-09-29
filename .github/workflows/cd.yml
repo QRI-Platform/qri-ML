@@ -45,6 +45,7 @@ jobs:
           sudo docker run -d \
             --name "${DOCKER_IMAGE_NAME}-container" \
             --network "qri-network" \
+            -p 7860:7860 \
             --env "GROQ_API_KEY=${GROQ_API_KEY}" \
             --env "PINECONE_API_KEY=${PINECONE_API_KEY}" \
             --env "POSTGRES_SQL_URL=${POSTGRES_SQL_URL}" \
