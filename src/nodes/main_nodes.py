@@ -25,7 +25,8 @@ from src.core.constants import (NO_OF_LAST_MESSAGES_TO_KEEP,
                                 MINIMUM_LENGTH_OF_LONG_TERM_MEMORY, 
                                 DEFAULT_INDEX_NAME, 
                                 LLM_OUTPUT_MAX_WORDS,
-                                MAX_TOOL_CALL_LIMIT
+                                MAX_TOOL_CALL_LIMIT,
+                                MAX_TOTAL_NO_OF_QUESTIONS_PER_REQUEST,
                                 )
 from src.domain.state import (State, 
                               QueryGenerationOutput, 
@@ -44,7 +45,7 @@ from langchain.agents import create_agent
 from langchain.agents.middleware import ToolCallLimitMiddleware
 from langchain_core.callbacks.manager import adispatch_custom_event
 import re
-
+import asyncio
 
 agent_tool_limit_middleware = ToolCallLimitMiddleware(run_limit=MAX_TOOL_CALL_LIMIT, exit_behavior="end")
 
@@ -389,26 +390,56 @@ async def agent_node(state: State, config: RunnableConfig, store: BaseStore):
 
 @observe(name="test_generation_node")
 async def test_generation_node(state: State):
-
     """Generates a test paper based on the given test configuration."""
     logger.info("Entered in the test_generation_node")
-    llm = get_llm(
-        reasoning_format=None,
-        reasoning_effort=None,
-        max_tokens=8192,
-    )
-    llm = llm.with_structured_output(
-        Questions_generation_schema
-    )
+    
+    total_requested = state.get('total_no_of_questions', MAX_TOTAL_NO_OF_QUESTIONS_PER_REQUEST)
 
-    chain = TEST_PAPER_GENERATION_PROMPT | llm
-    logger.info("Generating test paper")
-    results = await chain.ainvoke({
-        "total_no_of_questions": state["total_no_of_questions"],
-        "level": state["level"],
-        "subject_name": state["subject_name"],
-        "exam_type": state["exam_type"],
-    })
-    logger.info("Test_paper_generated")
+    async def generate_test_paper(no_of_questions: int):
+        llm = get_llm(
+            reasoning_format=None,
+            reasoning_effort=None,
+            max_tokens=8192,
+        )
+        llm = llm.with_structured_output(
+            Questions_generation_schema,
+            method="json_schema",
+            strict=True
+        )
+        chain = TEST_PAPER_GENERATION_PROMPT | llm
+        logger.info("Generating test paper for %d questions", no_of_questions)
+        results = await chain.ainvoke({
+            "total_no_of_questions": no_of_questions,
+            "level": state["level"],
+            "subject_name": state["subject_name"],
+            "exam_type": state["exam_type"],
+        })
+        logger.info("Test_paper_generated for %d questions", no_of_questions)
+        return results
 
-    return {"test_paper": results}
+    tasks = []
+    if total_requested <= MAX_TOTAL_NO_OF_QUESTIONS_PER_REQUEST:
+        tasks.append(generate_test_paper(total_requested))
+    else:
+        full_chunks = total_requested // MAX_TOTAL_NO_OF_QUESTIONS_PER_REQUEST
+        remainder = total_requested % MAX_TOTAL_NO_OF_QUESTIONS_PER_REQUEST
+        
+        for _ in range(full_chunks):
+            tasks.append(generate_test_paper(MAX_TOTAL_NO_OF_QUESTIONS_PER_REQUEST))
+        
+        if remainder > 0:
+            tasks.append(generate_test_paper(remainder))
+
+    lst = await asyncio.gather(*tasks)
+    print(lst)
+    
+    # Fast O(N) merge using a flat comprehension
+    merged_questions = [
+        q
+        for res in lst
+        for q in (res.questions if hasattr(res, "questions") else res.get("questions", []))
+    ]
+
+    merged_results = Questions_generation_schema(questions=merged_questions)
+
+    return {"test_paper": merged_results}
