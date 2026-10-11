@@ -2,7 +2,7 @@ import os
 import shutil
 import sys
 from typing import List
-from fastapi import Request, UploadFile, File
+from fastapi import Request, UploadFile, File, HTTPException
 from src.core.constants import PUBLIC_TEMP_DIR
 from src.core.exceptions import MyException
 from src.core.logger import logger
@@ -41,6 +41,8 @@ async def multer_middleware(
         logger.info("multer_middleware: %d file(s) saved", len(saved_paths))
         yield saved_paths
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("multer_middleware: error saving files: %s", str(e))
         raise MyException(e, sys)
