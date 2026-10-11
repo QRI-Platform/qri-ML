@@ -1,115 +1,250 @@
+import json
 import pytest
 from unittest.mock import MagicMock, patch
 from langchain_core.documents import Document
 
-from src.retrievers.pinecone_retriever import Retriever, get_retriever
+from src.retrievers.pinecone_retriever import Retriever, get_retriever, _verified_indexes
 from src.domain.config_entities import RetrieverConfig
+from src.core.exceptions import MyException
 
 
-@pytest.fixture
-def retriever_cfg():
-    return RetrieverConfig(
-        index_name="test_idx",
-        namespace="test_ns",
-        embeding_dim=128,
-        metric="cosine",
-        cloud="aws",
-        region="us-west-1",
-        k=3,
-    )
+class TestRetrieverUnit:
 
+    def test_sanitize_metadata_preserves_primitives_and_string_lists(self, sample_retriever_config):
+        docs = [
+            Document(
+                page_content="Test content 1",
+                metadata={
+                    "str_key": "sample_string",
+                    "int_key": 42,
+                    "float_key": 3.14,
+                    "bool_key": True,
+                    "list_str_key": ["tag1", "tag2", "tag3"],
+                },
+            )
+        ]
+        sanitized = Retriever._sanitize_metadata(docs)
+        meta = sanitized[0].metadata
+        assert meta["str_key"] == "sample_string"
+        assert meta["int_key"] == 42
+        assert meta["float_key"] == 3.14
+        assert meta["bool_key"] is True
+        assert meta["list_str_key"] == ["tag1", "tag2", "tag3"]
 
-@pytest.fixture
-def retriever_inst(retriever_cfg):
-    with patch("src.retrievers.pinecone_retriever.get_pinecone_client") as mock_get_pc, \
-         patch("src.retrievers.pinecone_retriever.get_embeddings") as mock_get_emb, \
-         patch("src.retrievers.pinecone_retriever.get_app_config"):
-        
+    def test_sanitize_metadata_serializes_complex_and_nested_types(self, sample_retriever_config):
+        docs = [
+            Document(
+                page_content="Complex metadata doc",
+                metadata={
+                    "dict_key": {"sub_key": "val", "count": 10},
+                    "list_of_ints": [1, 2, 3],
+                    "none_key": None,
+                },
+            )
+        ]
+        sanitized = Retriever._sanitize_metadata(docs)
+        meta = sanitized[0].metadata
+        assert meta["dict_key"] == json.dumps({"sub_key": "val", "count": 10})
+        assert meta["list_of_ints"] == json.dumps([1, 2, 3])
+        assert meta["none_key"] == "null"
+
+    @pytest.mark.asyncio
+    @patch("src.retrievers.pinecone_retriever.PineconeVectorStore")
+    @patch("src.retrievers.pinecone_retriever.get_app_config")
+    @patch("src.retrievers.pinecone_retriever.get_embeddings")
+    @patch("src.retrievers.pinecone_retriever.get_pinecone_client")
+    async def test_create_retriever_when_index_exists(
+        self, mock_get_client, mock_get_embeddings, mock_get_cfg, mock_vector_store_cls, sample_retriever_config
+    ):
+        mock_pc = MagicMock()
+        mock_pc.has_index.return_value = True
+        mock_get_client.return_value = mock_pc
+
+        cfg = MagicMock()
+        cfg.pine_cone_api_key = "fake-key"
+        mock_get_cfg.return_value = cfg
+
+        _verified_indexes.clear()
+
+        retriever = Retriever(retriever_config=sample_retriever_config)
+        vs = await retriever.create_retriever()
+
+        mock_pc.has_index.assert_called_once_with(sample_retriever_config.index_name)
+        mock_pc.create_index.assert_not_called()
+        mock_vector_store_cls.assert_called_once()
+        assert sample_retriever_config.index_name in _verified_indexes
+
+    @pytest.mark.asyncio
+    @patch("src.retrievers.pinecone_retriever.PineconeVectorStore")
+    @patch("src.retrievers.pinecone_retriever.get_app_config")
+    @patch("src.retrievers.pinecone_retriever.get_embeddings")
+    @patch("src.retrievers.pinecone_retriever.get_pinecone_client")
+    async def test_create_retriever_when_index_does_not_exist(
+        self, mock_get_client, mock_get_embeddings, mock_get_cfg, mock_vector_store_cls, sample_retriever_config
+    ):
         mock_pc = MagicMock()
         mock_pc.has_index.return_value = False
-        mock_get_pc.return_value = mock_pc
-        mock_get_emb.return_value = MagicMock()
+        mock_get_client.return_value = mock_pc
 
-        r = Retriever(retriever_config=retriever_cfg)
-        r._pc = mock_pc
-        return r
+        cfg = MagicMock()
+        cfg.pine_cone_api_key = "fake-key"
+        mock_get_cfg.return_value = cfg
 
+        _verified_indexes.clear()
 
-# 1. Test _sanitize_metadata
-def test_sanitize_metadata():
-    docs = [
-        Document(
-            page_content="sample text",
-            metadata={"str_key": "val", "int_key": 10, "dict_key": {"a": 1}},
+        retriever = Retriever(retriever_config=sample_retriever_config)
+        vs = await retriever.create_retriever()
+
+        mock_pc.has_index.assert_called_once_with(sample_retriever_config.index_name)
+        mock_pc.create_index.assert_called_once()
+        assert sample_retriever_config.index_name in _verified_indexes
+
+    @pytest.mark.asyncio
+    @patch("src.retrievers.pinecone_retriever.get_embeddings")
+    @patch("src.retrievers.pinecone_retriever.get_pinecone_client")
+    async def test_create_retriever_failure_raises_my_exception(
+        self, mock_get_client, mock_get_embeddings, sample_retriever_config
+    ):
+        mock_pc = MagicMock()
+        mock_pc.has_index.side_effect = RuntimeError("Pinecone network error")
+        mock_get_client.return_value = mock_pc
+        _verified_indexes.clear()
+
+        retriever = Retriever(retriever_config=sample_retriever_config)
+        with pytest.raises(MyException):
+            await retriever.create_retriever()
+
+    @pytest.mark.asyncio
+    @patch("src.retrievers.pinecone_retriever.get_embeddings")
+    @patch("src.retrievers.pinecone_retriever.get_pinecone_client")
+    async def test_add_documents(
+        self, mock_get_client, mock_get_embeddings, sample_retriever_config
+    ):
+        mock_pc = MagicMock()
+        mock_get_client.return_value = mock_pc
+
+        retriever = Retriever(retriever_config=sample_retriever_config)
+        mock_vs = MagicMock()
+
+        docs = [Document(page_content="Doc 1", metadata={"key": "val"})]
+        await retriever.add_documents(vector_store=mock_vs, documents=docs)
+
+        mock_vs.add_documents.assert_called_once_with(documents=docs)
+
+    @pytest.mark.asyncio
+    @patch("src.retrievers.pinecone_retriever.get_embeddings")
+    @patch("src.retrievers.pinecone_retriever.get_pinecone_client")
+    async def test_get_similar_documents_without_filter(
+        self, mock_get_client, mock_get_embeddings, sample_retriever_config
+    ):
+        mock_pc = MagicMock()
+        mock_get_client.return_value = mock_pc
+
+        retriever = Retriever(retriever_config=sample_retriever_config)
+        mock_vs = MagicMock()
+        mock_vs.similarity_search.return_value = [
+            Document(page_content="Relevant answer", metadata={})
+        ]
+
+        results = await retriever.get_similar_documents(
+            vector_store=mock_vs, query="What is machine learning?"
         )
-    ]
-    sanitized = Retriever._sanitize_metadata(docs)
-    assert sanitized[0].metadata["str_key"] == "val"
-    assert sanitized[0].metadata["int_key"] == 10
-    assert isinstance(sanitized[0].metadata["dict_key"], str)
 
+        mock_vs.similarity_search.assert_called_once_with(
+            query="What is machine learning?",
+            k=sample_retriever_config.k,
+            filter=None,
+        )
+        assert len(results) == 1
+        assert results[0].page_content == "Relevant answer"
 
-# 2. Test create_retriever
-@pytest.mark.asyncio
-@patch("src.retrievers.pinecone_retriever.PineconeVectorStore")
-async def test_create_retriever(mock_vs_class, retriever_inst: Retriever):
-    store = await retriever_inst.create_retriever()
-    retriever_inst._pc.has_index.assert_called_once_with("test_idx")
-    retriever_inst._pc.create_index.assert_called_once()
-    assert store == mock_vs_class.return_value
+    @pytest.mark.asyncio
+    @patch("src.retrievers.pinecone_retriever.get_embeddings")
+    @patch("src.retrievers.pinecone_retriever.get_pinecone_client")
+    async def test_get_similar_documents_with_filter(
+        self, mock_get_client, mock_get_embeddings, sample_retriever_config
+    ):
+        mock_pc = MagicMock()
+        mock_get_client.return_value = mock_pc
 
+        retriever = Retriever(retriever_config=sample_retriever_config)
+        mock_vs = MagicMock()
+        mock_vs.similarity_search.return_value = []
 
-# 3. Test add_documents
-@pytest.mark.asyncio
-async def test_add_documents(retriever_inst: Retriever):
-    mock_vector_store = MagicMock()
-    docs = [Document(page_content="hello", metadata={"num": 1})]
-    
-    await retriever_inst.add_documents(
-        vector_store=mock_vector_store,
-        documents=docs,
-    )
-    mock_vector_store.add_documents.assert_called_once_with(documents=docs)
+        await retriever.get_similar_documents(
+            vector_store=mock_vs,
+            query="Search query",
+            filter=["thread123_notes.pdf", "thread123_guide.pdf"],
+        )
 
+        expected_filter = {"filename": {"$in": ["thread123_notes.pdf", "thread123_guide.pdf"]}}
+        mock_vs.similarity_search.assert_called_once_with(
+            query="Search query",
+            k=sample_retriever_config.k,
+            filter=expected_filter,
+        )
 
-# 4. Test get_similar_documents with @filename filter
-@pytest.mark.asyncio
-async def test_get_similar_documents(retriever_inst: Retriever):
-    mock_vector_store = MagicMock()
-    expected_docs = [Document(page_content="result")]
-    mock_vector_store.similarity_search.return_value = expected_docs
+    @pytest.mark.asyncio
+    @patch("src.retrievers.pinecone_retriever.get_embeddings")
+    @patch("src.retrievers.pinecone_retriever.get_pinecone_client")
+    async def test_delete_namespace_success(
+        self, mock_get_client, mock_get_embeddings, sample_retriever_config
+    ):
+        mock_pc = MagicMock()
+        mock_index = MagicMock()
+        mock_pc.Index.return_value = mock_index
+        mock_get_client.return_value = mock_pc
 
-    results = await retriever_inst.get_similar_documents(
-        vector_store=mock_vector_store,
-        query="search query",
-        filter=["file1.pdf", "file2.pdf"],
-    )
+        retriever = Retriever(retriever_config=sample_retriever_config)
+        result = await retriever.delete_namespace(
+            index_name="test-index", namespace="test-ns"
+        )
 
-    mock_vector_store.similarity_search.assert_called_once_with(
-        query="search query",
-        k=3,
-        filter={"filename": {"$in": ["file1.pdf", "file2.pdf"]}},
-    )
-    assert results == expected_docs
+        mock_index.delete.assert_called_once_with(delete_all=True, namespace="test-ns")
+        assert result is True
 
+    @pytest.mark.asyncio
+    @patch("src.retrievers.pinecone_retriever.get_embeddings")
+    @patch("src.retrievers.pinecone_retriever.get_pinecone_client")
+    async def test_delete_namespace_not_found_returns_false(
+        self, mock_get_client, mock_get_embeddings, sample_retriever_config
+    ):
+        mock_pc = MagicMock()
+        mock_index = MagicMock()
+        mock_index.delete.side_effect = Exception("Namespace not found 404")
+        mock_pc.Index.return_value = mock_index
+        mock_get_client.return_value = mock_pc
 
-# 5. Test delete_namespace
-@pytest.mark.asyncio
-async def test_delete_namespace(retriever_inst: Retriever):
-    mock_index = MagicMock()
-    retriever_inst._pc.Index.return_value = mock_index
+        retriever = Retriever(retriever_config=sample_retriever_config)
+        result = await retriever.delete_namespace(
+            index_name="test-index", namespace="test-ns"
+        )
 
-    res = await retriever_inst.delete_namespace("test_idx", "test_ns")
-    
-    retriever_inst._pc.Index.assert_called_once_with("test_idx")
-    mock_index.delete.assert_called_once_with(delete_all=True, namespace="test_ns")
-    assert res is True
+        assert result is False
 
+    @pytest.mark.asyncio
+    @patch("src.retrievers.pinecone_retriever.get_embeddings")
+    @patch("src.retrievers.pinecone_retriever.get_pinecone_client")
+    async def test_delete_namespace_unexpected_error_raises_my_exception(
+        self, mock_get_client, mock_get_embeddings, sample_retriever_config
+    ):
+        mock_pc = MagicMock()
+        mock_index = MagicMock()
+        mock_index.delete.side_effect = RuntimeError("Fatal connection failure")
+        mock_pc.Index.return_value = mock_index
+        mock_get_client.return_value = mock_pc
 
-# 6. Test get_retriever factory function
-def test_get_retriever_factory(retriever_cfg):
-    with patch("src.retrievers.pinecone_retriever.get_pinecone_client"), \
-         patch("src.retrievers.pinecone_retriever.get_embeddings"), \
-         patch("src.retrievers.pinecone_retriever.get_app_config"):
-        r = get_retriever(retriever_cfg)
-        assert isinstance(r, Retriever)
+        retriever = Retriever(retriever_config=sample_retriever_config)
+        with pytest.raises(MyException):
+            await retriever.delete_namespace(
+                index_name="test-index", namespace="test-ns"
+            )
+
+    @patch("src.retrievers.pinecone_retriever.get_embeddings")
+    @patch("src.retrievers.pinecone_retriever.get_pinecone_client")
+    def test_get_retriever_factory_function(
+        self, mock_get_client, mock_get_embeddings, sample_retriever_config
+    ):
+        retriever = get_retriever(sample_retriever_config)
+        assert isinstance(retriever, Retriever)
+        assert retriever.retriever_config == sample_retriever_config

@@ -31,15 +31,7 @@ from src.core.constants import MAXIMUM_CONNECTION_POOL_SIZE
 DB_URI = get_app_config().postgres_sql_url
 
 # Async Connection Pool with automatic idle connection recycling & health checks for Neon Postgres SSL timeouts
-pool = AsyncConnectionPool(
-    conninfo=DB_URI, 
-    max_size=MAXIMUM_CONNECTION_POOL_SIZE, 
-    max_idle=30,
-    max_lifetime=300,
-    check=AsyncConnectionPool.check_connection,
-    kwargs={"autocommit": True},
-    open=False
-)
+pool = None
 
 # Global variables (will be initialized inside init_db_services when event loop starts)
 _checkpointer = None
@@ -65,10 +57,21 @@ async def init_db_services():
     Call this inside FastAPI's lifespan on application startup 
     when the async event loop is active.
     """
-    global _checkpointer, _store
+    global pool, _checkpointer, _store
     try:
         logger.debug("Initializing Async Connection Pool, Checkpointer, and Store...")
         
+        if pool is None or pool.closed:
+            pool = AsyncConnectionPool(
+                conninfo=DB_URI, 
+                max_size=MAXIMUM_CONNECTION_POOL_SIZE, 
+                max_idle=30,
+                max_lifetime=300,
+                check=AsyncConnectionPool.check_connection,
+                kwargs={"autocommit": True},
+                open=False
+            )
+            
         # 1. Open Connection Pool
         await pool.open()
         
