@@ -227,3 +227,8 @@ data/app.db
 timeline.md
 
 *.env
+
+
+
+.openclaude/
+.deepeval/

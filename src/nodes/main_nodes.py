@@ -281,7 +281,13 @@ async def chat_node(state: State, config: RunnableConfig, store: BaseStore) -> d
 
 
 @observe(name="agent_node")
-async def agent_node(state: State, config: RunnableConfig, store: BaseStore):
+async def agent_node(
+    state: State,
+    config: RunnableConfig,
+    store: BaseStore,
+    *,
+    agent_tools: Optional[List] = None,
+):
     try:
         user_id = config.get("configurable", {}).get("user_id", "unknown")
         messages = state.get("messages", [])
@@ -303,7 +309,11 @@ async def agent_node(state: State, config: RunnableConfig, store: BaseStore):
         }).to_string()
         agent = create_agent(
             model=get_llm(streaming=True),
-            tools=[solver, save_long_term_memory,retreiver],
+            tools=(
+                agent_tools
+                if agent_tools is not None
+                else [solver, save_long_term_memory, retreiver]
+            ),
             middleware=[agent_tool_limit_middleware],
             system_prompt=system_prompt,
         )

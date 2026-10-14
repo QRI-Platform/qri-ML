@@ -1,0 +1,38 @@
+[
+  {
+    "id": "a001",
+    "question": "What is the physical significance of the octet rule and its limitations according to the Kossel-Lewis approach?",
+    "ideal_answer": "The octet rule describes how atoms can attain a stable, noble-gas-like valence shell by transferring or sharing electrons. It is useful for many compounds, especially those of second-period elements, but is not universal: incomplete-octet, odd-electron, and expanded-octet species are exceptions.",
+    "source": "kech104.pdf, Section 4.1.5"
+  },
+  {
+    "id": "a002",
+    "question": "According to Newton's second law, how is force related to the rate of change of momentum?",
+    "ideal_answer": "The net external force is proportional to the rate of change of momentum and acts in the direction of that change. In SI units the proportionality constant is one, so F = dp/dt; for constant mass this becomes F = ma.",
+    "source": "keph104.pdf, Section 4.5"
+  },
+  {
+    "id": "a003",
+    "question": "How do you evaluate the determinant of a 3x3 matrix by expanding along a row or column?",
+    "ideal_answer": "Expand along a chosen row or column by multiplying each entry by its signed cofactor, where the cofactor is (-1)^(i+j) times the minor. The resulting determinant has the same value whichever row or column is used; choosing one with zeros can simplify the calculation.",
+    "source": "lemh104.pdf, Section 4.2.3"
+  },
+  {
+    "id": "a004",
+    "question": "What are the main factors and exceptions associated with the formation of an ionic bond?",
+    "ideal_answer": "Ionic-compound formation depends mainly on how readily the neutral atoms form positive and negative ions and on the arrangement of those ions in the crystal lattice. Formation is favoured by low ionisation enthalpy and a large negative electron-gain enthalpy. Ammonium, NH4+, is an exception to the usual pattern of a metal-derived cation and non-metal-derived anion.",
+    "source": "kech104.pdf, Section 4.2"
+  },
+  {
+    "id": "a005",
+    "question": "What is the difference between static and kinetic friction, and how do they satisfy empirical laws?",
+    "ideal_answer": "Static friction opposes impending motion and adjusts up to a limiting value (fs)max = mu_s N. Once sliding begins, kinetic friction opposes the relative motion and is approximately fk = mu_k N. Both are approximately independent of contact area, kinetic friction is nearly independent of speed, and experiments find mu_k < mu_s.",
+    "source": "keph104.pdf, Section 4.9"
+  },
+  {
+    "id": "a006",
+    "question": "How is the area of a triangle calculated using determinants given its vertices?",
+    "ideal_answer": "For vertices (x1,y1), (x2,y2), and (x3,y3), form the 3x3 determinant whose rows are [x1,y1,1], [x2,y2,1], and [x3,y3,1]. The area is one half of the absolute value of this determinant; if it is zero, the points are collinear.",
+    "source": "lemh104.pdf, Section 4.3"
+  }
+]
