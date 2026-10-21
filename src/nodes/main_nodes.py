@@ -452,4 +452,4 @@ async def test_generation_node(state: State):
 
     merged_results = Questions_generation_schema(questions=merged_questions)
 
-    return {"test_paper": merged_results}
+    return {"test_paper": merged_results,"need_test_paper":False}

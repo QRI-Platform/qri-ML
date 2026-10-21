@@ -16,6 +16,9 @@ def route_entry(state: State) -> str:
 
     if state.get("need_test_paper",False):
         return "test_generation_node"
+
+    if state.get("need_performance_generation",False):
+        return "performance_node"
     return "summary_node"
 
 

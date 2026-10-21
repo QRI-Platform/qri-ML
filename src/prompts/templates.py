@@ -26,3 +26,9 @@ AGENT_PROMPT = ChatPromptTemplate.from_messages(load_prompt("AGENT_PROMPT"))
 
 # ============================= Test Paper Generation SubGraph prompts ============================
 TEST_PAPER_GENERATION_PROMPT = ChatPromptTemplate.from_messages(load_prompt("TEST_PAPER_GENERATION_PROMPT"))
+
+
+
+# ============================= Test Paper Performance SubGraph prompts ===========================
+
+PERFORMANCE_PROMPT = ChatPromptTemplate.from_messages(load_prompt("PERFORMANCE_PROMPT"))

@@ -63,6 +63,33 @@ class Questions_generation_schema(BaseModel):
 
 
 
+class PerformanceGenerationSchema(BaseModel):
+    weak_area: list[str] = Field(
+        default_factory=list,
+        description="Topics where the user demonstrates weak understanding based on incorrect answers and recurring mistakes."
+    )
+
+    strong_area: list[str] = Field(
+        default_factory=list,
+        description="Topics where the user demonstrates consistent accuracy and strong conceptual understanding."
+    )
+
+    mid_area: list[str] = Field(
+        default_factory=list,
+        description="Topics where the user demonstrates partial understanding or inconsistent performance."
+    )
+
+    recommendations: list[str] = Field(
+        default_factory=list,
+        description="Specific actions or practice suggestions to improve the user's weak and intermediate areas."
+    )
+
+    overall_feedback: str = Field(
+        description="A concise summary of the user's overall performance based on the analyzed answers."
+    )
+
+
+
 
 class State(TypedDict):
     messages: Annotated[List[AnyMessage], add_messages]
@@ -82,6 +109,15 @@ class State(TypedDict):
     level:str=DEFAULT_DEFFICULTY_LEVEL
     subject_name:str=DEFAULT_SUBJECT_NAME
     exam_type:str=DEFAULT_EXAM_TYPE
+
+
+
+    # Test Performance logic
+    need_performance_generation:bool=False
+    total_correct_answers:int=0
+    total_questions:int=DEFAULT_TOTAL_NO_OF_QUESTIONS
+    solved_test_paper:dict={}
+    performance_schema:dict={}
 
 
 

@@ -112,6 +112,54 @@ class GraphRunnerPipeline(Pipeline):
             raise MyException(e, sys)
 
 
+    @observe(name="GraphRunnerPipeline.initiate_performance_generation")
+    async def initiate_performance_generation(self,
+                                              user_id:str,
+                                              total_correct_answers:int,
+                                              total_questions:int,
+                                              solved_test_paper:dict,
+                                              ):
+        
+        try:
+            need_performance_generation:bool=True
+            thread_id = "None"
+            
+            logger.info("Pipeline.initiate_performance_generation called: user=%s thread=%s",
+                        user_id, thread_id)
+
+            state = {
+                "need_performance_generation": need_performance_generation,
+                "total_correct_answers": total_correct_answers,
+                "total_questions": total_questions,
+                "solved_test_paper": solved_test_paper,
+            }
+
+            callbacks = []
+            try:
+                callbacks.append(CallbackHandler())
+            except Exception as fe:
+                logger.warning("Could not initialize Langfuse callback handler: %s", fe)
+
+            config = {
+                "configurable": {
+                    "thread_id": thread_id,
+                    "user_id": user_id,
+                    "metadata": {},
+                },
+                "callbacks": callbacks,
+            }
+            logger.debug("Invoking performance-generation graph with config=%s", config)
+
+            with propagate_attributes(session_id=thread_id, user_id=user_id):
+                return await self.graph.ainvoke(state, config=config)
+            
+
+        except Exception as e:
+            logger.error("Pipeline.initiate_performace_generation failed: %s", str(e))
+            raise MyException(e, sys)
+            
+
+
 
 
 @lru_cache
