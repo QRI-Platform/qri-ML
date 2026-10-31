@@ -1,17 +1,18 @@
-from fastapi import APIRouter, Request, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Request
 from fastapi.exceptions import HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from src.core.logger import logger
+
 from api.middlewares.authentication_middleware import authenticate_user
+from src.core.logger import logger
 from src.services.conversation_service import (
-    load_conversation,
-    delete_pinecone_namespace,
-    get_user_long_term_memory,
-    delete_user_conversation,
+    delete_has_attributes,
     delete_long_term_memory_key,
+    delete_pinecone_namespace,
+    delete_user_conversation,
+    get_user_long_term_memory,
+    load_conversation,
     upsert_long_term_memory,
-    delete_has_attributes
 )
 
 router: APIRouter = APIRouter(dependencies=[Depends(authenticate_user)])

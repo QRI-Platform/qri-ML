@@ -1,16 +1,15 @@
 import pytest
-from pydantic import ValidationError
 from langchain_core.exceptions import OutputParserException
+from pydantic import ValidationError
 
+from src.domain.config_entities import DataIngestionConfig, RetrieverConfig
 from src.domain.state import (
+    Options,
     OrchestratorOutput,
     QueryGenerationOutput,
-    ChatOutput,
-    Options,
     Question,
     Questions_generation_schema,
 )
-from src.domain.config_entities import RetrieverConfig, DataIngestionConfig
 from src.utils.langchain_utils import TaggedPydanticOutputParser
 
 

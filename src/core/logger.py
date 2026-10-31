@@ -1,10 +1,11 @@
-import os
-import sys
 import atexit
 import logging
-from queue import Queue
+import os
+import sys
 from datetime import datetime
-from logging.handlers import RotatingFileHandler, QueueHandler, QueueListener
+from logging.handlers import QueueHandler, QueueListener, RotatingFileHandler
+from queue import Queue
+
 from src.core.constants import LOGS_DIR
 
 LOG_FILE = f"{datetime.now().strftime('%m_%d_%Y_%H_%M_%S')}.log"

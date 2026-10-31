@@ -1,18 +1,22 @@
 
-from typing import Annotated,List,Optional
-from langchain_core.tools import tool, InjectedToolArg
+import asyncio
+import sys
+from typing import Annotated
+
 from langchain_core.runnables import RunnableConfig
+from langchain_core.tools import InjectedToolArg, tool
+
+from src.core.exceptions import MyException
 from src.core.logger import logger
 from src.domain.config_entities import RetrieverConfig
 from src.retrievers.pinecone_retriever import get_retriever
-import asyncio
-from src.core.exceptions import MyException
-import sys
+
+
 @tool
 async def retreiver(
-    queries: List[str],
+    queries: list[str],
     config: Annotated[RunnableConfig, InjectedToolArg],
-    filters: Optional[List[str]] = None,
+    filters: list[str] | None = None,
 ):
     """Search uploaded documents using one or more focused semantic queries.
 

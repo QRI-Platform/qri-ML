@@ -1,15 +1,16 @@
-from unittest.mock import patch, MagicMock
-from langchain_core.messages import HumanMessage, AIMessage
+from unittest.mock import patch
+
+from langchain_core.messages import HumanMessage
 from langgraph.graph import END
 
-from src.nodes.conditional_nodes import (
-    route_entry,
-    route_after_orchastrator,
-    route_summary_node,
-    route_after_limit,
-)
-from src.graphs.builder import get_graph
 from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP
+from src.graphs.builder import get_graph
+from src.nodes.conditional_nodes import (
+    route_after_limit,
+    route_after_orchastrator,
+    route_entry,
+    route_summary_node,
+)
 
 
 class TestConditionalRoutingUnit:

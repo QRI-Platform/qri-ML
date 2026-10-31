@@ -1,0 +1,60 @@
+[
+  {
+    "id": "g001",
+    "query": "What is the physical significance of the octet rule and its limitations according to the Kossel-Lewis approach?",
+    "ideal_context": [
+      "Kössel and Lewis in 1916 developed an important theory of chemical combination between atoms known as electronic theory of chemical bonding.",
+      "Atoms combine by transfer or sharing of valence electrons in order to have an octet in their valence shells; this is known as the octet rule.",
+      "The octet rule, though useful, is not universal. It is quite useful for understanding the structures of most of the organic compounds and it applies mainly to the second period elements of the periodic table.",
+      "There are three types of exceptions to the octet rule: incomplete octet, odd-electron molecules, and expanded octet."
+    ],
+    "source": "kech104.pdf, Section 4.1.5"
+  },
+  {
+    "id": "g002",
+    "query": "According to Newton's second law, how is force related to the rate of change of momentum?",
+    "ideal_context": [
+      "The rate of change of momentum of a body is directly proportional to the applied force and takes place in the direction in which the force acts.",
+      "For a body of fixed mass, the second law can be written as F = k m a; in SI units k = 1, so F = m a."
+    ],
+    "source": "keph104.pdf, Section 4.5"
+  },
+  {
+    "id": "g003",
+    "query": "How do you evaluate the determinant of a 3x3 matrix by expanding along a row or column?",
+    "ideal_context": [
+      "Determinant of a matrix of order three can be determined by expressing it in terms of second order determinants. This is known as expansion of a determinant along a row (or a column).",
+      "Expanding a determinant along any row or column gives same value."
+    ],
+    "source": "lemh104.pdf, Section 4.2.3"
+  },
+  {
+    "id": "g004",
+    "query": "What are the main factors and exceptions associated with the formation of an ionic bond?",
+    "ideal_context": [
+      "From the Kossel and Lewis treatment of the formation of an ionic bond, it follows that the formation of ionic compounds would primarily depend upon: the ease of formation of the positive and negative ions from the respective neutral atoms; the arrangement of the positive and negative ions in the solid, that is, the lattice of the crystalline compound.",
+      "Most ionic compounds have cations derived from metallic elements and anions from non-metallic elements. The ammonium ion, NH4+ (made up of two non-metallic elements) is an exception."
+    ],
+    "source": "kech104.pdf, Section 4.2"
+  },
+  {
+    "id": "g005",
+    "query": "What is the difference between static and kinetic friction, and how do they satisfy empirical laws?",
+    "ideal_context": [
+      "Static friction opposes impending motion. The term impending motion means motion that would take place (but does not actually take place) under the applied force, if friction were absent.",
+      "Frictional force that opposes relative motion between surfaces in contact is called kinetic or sliding friction and is denoted by fk.",
+      "The limiting value of static friction is independent of contact area and varies with normal force as (fs)max = mu_s N.",
+      "Kinetic friction is nearly independent of velocity and contact area, follows fk = mu_k N, and mu_k is less than mu_s."
+    ],
+    "source": "keph104.pdf, Section 4.9"
+  },
+  {
+    "id": "g006",
+    "query": "How is the area of a triangle calculated using determinants given its vertices?",
+    "ideal_context": [
+      "The area of a triangle whose vertices are (x1, y1), (x2, y2) and (x3, y3) is one half of the absolute value of the determinant with rows [x1,y1,1], [x2,y2,1] and [x3,y3,1].",
+      "The area of a triangle formed by three collinear points is zero."
+    ],
+    "source": "lemh104.pdf, Section 4.3"
+  }
+]

@@ -1,10 +1,13 @@
 import sys
 from functools import lru_cache
+
 from langchain_huggingface import HuggingFaceEmbeddings
-from src.core.constants import EMBEDDING_MODEL_NAME
-from src.core.logger import logger
-from src.core.exceptions import MyException
+
 from src.core.config import get_app_config
+from src.core.constants import EMBEDDING_MODEL_NAME
+from src.core.exceptions import MyException
+from src.core.logger import logger
+
 
 @lru_cache
 def get_embeddings() -> HuggingFaceEmbeddings:

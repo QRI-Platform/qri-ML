@@ -1,16 +1,15 @@
 import sys
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
-from unittest.mock import AsyncMock, MagicMock
 
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_core.documents import Document
+from langchain_core.messages import HumanMessage
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from langgraph.store.memory import InMemoryStore
-from evals.common import get_llm, EvaluationResult
-from langchain_core.prompts import ChatPromptTemplate
-from src.core.logger import logger
+from pydantic import BaseModel, Field
+
+from evals.common import EvaluationResult, get_llm
 from src.core.exceptions import MyException
+from src.core.logger import logger
 from src.domain.state import State
 from src.nodes.main_nodes import chat_node
 
@@ -18,11 +17,11 @@ from src.nodes.main_nodes import chat_node
 # --- Pydantic Schema for LLM Judge ---
 class AccuracyOutput(BaseModel):
     score: float = Field(
-        ..., 
+        ...,
         description="Float score between 0.0 and 1.0 indicating how closely content and intent match the expected response."
     )
     reasoning: str = Field(
-        ..., 
+        ...,
         description="Brief explanation justifying the assigned score."
     )
 
@@ -170,9 +169,9 @@ Score the similarity and quality between 0.0 and 1.0."""
         return EvaluationResult(
             name="generator_accuracy",
             value=0.0,
-            comment=f"Evaluator exception: {str(e)}",
+            comment=f"Evaluator exception: {e!s}",
         )
-     
+
 
 
 

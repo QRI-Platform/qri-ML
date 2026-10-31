@@ -1,17 +1,21 @@
 import sys
 from functools import lru_cache
-from langchain_core.messages import HumanMessage
 
-from src.core.logger import logger
-from src.core.exceptions import MyException
-from src.core.constants import DEFAULT_DEFFICULTY_LEVEL,DEFAULT_EXAM_TYPE,DEFAULT_SUBJECT_NAME,DEFAULT_TOTAL_NO_OF_QUESTIONS
-from src.domain.enums import Pipeline
-from src.graphs.builder import get_graph
-from src.domain.state import State
+from langchain_core.messages import HumanMessage
 from langfuse import observe, propagate_attributes
 from langfuse.langchain import CallbackHandler
-from src.llm.llm_loader import get_llm
-from typing import Literal
+
+from src.core.constants import (
+    DEFAULT_DEFFICULTY_LEVEL,
+    DEFAULT_EXAM_TYPE,
+    DEFAULT_SUBJECT_NAME,
+    DEFAULT_TOTAL_NO_OF_QUESTIONS,
+)
+from src.core.exceptions import MyException
+from src.core.logger import logger
+from src.domain.enums import Pipeline
+from src.graphs.builder import get_graph
+
 
 class GraphRunnerPipeline(Pipeline):
     def __init__(self):
@@ -19,11 +23,11 @@ class GraphRunnerPipeline(Pipeline):
         logger.info("GraphRunnerPipeline initialized")
 
     @observe(name="GraphRunnerPipeline.initiate")
-    async def initiate(self, user_id: str, 
-                       thread_id: str, 
-                       file_paths: list = None, 
+    async def initiate(self, user_id: str,
+                       thread_id: str,
+                       file_paths: list = None,
                        message: str = None,
-                       metadata: dict = {}, 
+                       metadata: dict = {},
                        need_title: bool = False,
                        ):
         try:
@@ -43,7 +47,7 @@ class GraphRunnerPipeline(Pipeline):
                     "has_documents":True,
                     "need_title": need_title
                 }
-                
+
 
             callbacks = []
             try:
@@ -110,6 +114,54 @@ class GraphRunnerPipeline(Pipeline):
         except Exception as e:
             logger.error("Pipeline.initiate_test_generation failed: %s", str(e))
             raise MyException(e, sys)
+
+
+    @observe(name="GraphRunnerPipeline.initiate_performance_generation")
+    async def initiate_performance_generation(self,
+                                              user_id:str,
+                                              total_correct_answers:int,
+                                              total_questions:int,
+                                              solved_test_paper:dict,
+                                              ):
+
+        try:
+            need_performance_generation:bool=True
+            thread_id = "None"
+
+            logger.info("Pipeline.initiate_performance_generation called: user=%s thread=%s",
+                        user_id, thread_id)
+
+            state = {
+                "need_performance_generation": need_performance_generation,
+                "total_correct_answers": total_correct_answers,
+                "total_questions": total_questions,
+                "solved_test_paper": solved_test_paper,
+            }
+
+            callbacks = []
+            try:
+                callbacks.append(CallbackHandler())
+            except Exception as fe:
+                logger.warning("Could not initialize Langfuse callback handler: %s", fe)
+
+            config = {
+                "configurable": {
+                    "thread_id": thread_id,
+                    "user_id": user_id,
+                    "metadata": {},
+                },
+                "callbacks": callbacks,
+            }
+            logger.debug("Invoking performance-generation graph with config=%s", config)
+
+            with propagate_attributes(session_id=thread_id, user_id=user_id):
+                return await self.graph.ainvoke(state, config=config)
+
+
+        except Exception as e:
+            logger.error("Pipeline.initiate_performace_generation failed: %s", str(e))
+            raise MyException(e, sys)
+
 
 
 

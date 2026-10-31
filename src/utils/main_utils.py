@@ -1,4 +1,5 @@
 import json
+
 from src.core.exceptions import MyException
 
 # loading json to python dict

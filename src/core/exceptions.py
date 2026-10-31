@@ -1,4 +1,5 @@
 import sys
+
 from src.core.logger import logger
 
 
@@ -8,7 +9,7 @@ def error_message_detail(error: Exception, error_detail: sys) -> str:
     line_number = exc_tb.tb_lineno if exc_tb else 0
     error_message = (
         f"Error occurred in python script: [{file_name}] "
-        f"at line number [{line_number}]: {str(error)}"
+        f"at line number [{line_number}]: {error!s}"
     )
     logger.error(error_message)
     return error_message

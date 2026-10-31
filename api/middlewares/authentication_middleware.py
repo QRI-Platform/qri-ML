@@ -1,4 +1,5 @@
-from fastapi import Request, HTTPException
+from fastapi import HTTPException, Request
+
 from src.core.logger import logger
 
 
