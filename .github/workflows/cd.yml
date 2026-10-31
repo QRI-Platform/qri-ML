@@ -40,6 +40,10 @@ jobs:
           sudo docker rm -f "${DOCKER_IMAGE_NAME}-container" || true
           sudo docker network inspect "qri-network" >/dev/null 2>&1 || sudo docker network create "qri-network"
 
+      - name: Pruning system df
+        run: |
+          sudo docker system prune -f
+          
       - name: Run Docker Container
         run: |
           sudo docker run -d \
