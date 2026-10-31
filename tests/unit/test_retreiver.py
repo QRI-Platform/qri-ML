@@ -1,11 +1,15 @@
 import json
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 from langchain_core.documents import Document
 
-from src.retrievers.pinecone_retriever import Retriever, get_retriever, _verified_indexes
-from src.domain.config_entities import RetrieverConfig
 from src.core.exceptions import MyException
+from src.retrievers.pinecone_retriever import (
+    Retriever,
+    _verified_indexes,
+    get_retriever,
+)
 
 
 class TestRetrieverUnit:
@@ -67,7 +71,7 @@ class TestRetrieverUnit:
         _verified_indexes.clear()
 
         retriever = Retriever(retriever_config=sample_retriever_config)
-        vs = await retriever.create_retriever()
+        await retriever.create_retriever()
 
         mock_pc.has_index.assert_called_once_with(sample_retriever_config.index_name)
         mock_pc.create_index.assert_not_called()
@@ -93,7 +97,7 @@ class TestRetrieverUnit:
         _verified_indexes.clear()
 
         retriever = Retriever(retriever_config=sample_retriever_config)
-        vs = await retriever.create_retriever()
+        await retriever.create_retriever()
 
         mock_pc.has_index.assert_called_once_with(sample_retriever_config.index_name)
         mock_pc.create_index.assert_called_once()

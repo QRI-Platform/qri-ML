@@ -1,11 +1,11 @@
-import re
-
 import json
-from typing import Generic,TypeVar,Optional,Any
+import re
+from typing import Generic, TypeVar
 
-from pydantic import BaseModel, ValidationError
-from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.exceptions import OutputParserException
+from langchain_core.output_parsers import BaseOutputParser
+from pydantic import BaseModel, ValidationError
+
 T = TypeVar("T", bound=BaseModel)
 
 
@@ -27,7 +27,7 @@ class TaggedPydanticOutputParser(BaseOutputParser[T],Generic[T]):
             f"{json.dumps(reduced_schema)}"
         )
 
-    
+
 
     def parse(self,text:str)->T:
         raw_text = text.strip()
@@ -54,9 +54,9 @@ class TaggedPydanticOutputParser(BaseOutputParser[T],Generic[T]):
                     pass
 
             raise OutputParserException(
-                f"Failed to parse {self.pydantic_object.__name__} from output: {text}. Reason: {str(e)}"
+                f"Failed to parse {self.pydantic_object.__name__} from output: {text}. Reason: {e!s}"
             )
-    
+
     async def aparse(self,text:str)->str:
         return self.parse(text)
 

@@ -1,17 +1,18 @@
-import sys
 import json
-from typing import List, Optional, Dict, Any
-from pinecone import Pinecone, ServerlessSpec
-from langchain_pinecone import PineconeVectorStore
-from langchain_core.documents import Document
+import sys
+from typing import Any
 
-from src.core.logger import logger
-from src.core.exceptions import MyException
-from src.core.config import get_app_config
-from src.retrievers.pinecone_client import get_pinecone_client
-from src.embeddings.embedding_loader import get_embeddings
-from src.domain.config_entities import RetrieverConfig
+from langchain_core.documents import Document
+from langchain_pinecone import PineconeVectorStore
 from langfuse import observe
+from pinecone import Pinecone, ServerlessSpec
+
+from src.core.config import get_app_config
+from src.core.exceptions import MyException
+from src.core.logger import logger
+from src.domain.config_entities import RetrieverConfig
+from src.embeddings.embedding_loader import get_embeddings
+from src.retrievers.pinecone_client import get_pinecone_client
 
 _verified_indexes = set()
 
@@ -28,13 +29,11 @@ class Retriever:
         )
 
     @staticmethod
-    def _sanitize_metadata(documents: List[Document]) -> List[Document]:
+    def _sanitize_metadata(documents: list[Document]) -> list[Document]:
         for doc in documents:
             sanitized = {}
             for key, value in doc.metadata.items():
-                if isinstance(value, (str, int, float, bool)):
-                    sanitized[key] = value
-                elif isinstance(value, list) and all(isinstance(v, str) for v in value):
+                if isinstance(value, (str, int, float, bool)) or isinstance(value, list) and all(isinstance(v, str) for v in value):
                     sanitized[key] = value
                 else:
                     sanitized[key] = json.dumps(value, default=str)
@@ -76,7 +75,7 @@ class Retriever:
             raise MyException(e, sys)
 
     @observe(name="pinecone_add_documents")
-    async def add_documents(self, vector_store: PineconeVectorStore, documents: List[Document]):
+    async def add_documents(self, vector_store: PineconeVectorStore, documents: list[Document]):
         try:
             logger.info("Adding %d documents to vector store", len(documents))
             documents = self._sanitize_metadata(documents)
@@ -91,7 +90,7 @@ class Retriever:
         self,
         vector_store: PineconeVectorStore,
         query: str,
-        filter: Optional[List[str]] = None,
+        filter: list[str] | None = None,
     ):
         try:
             logger.info("Similarity search for query: %s", query)
@@ -99,7 +98,7 @@ class Retriever:
             # Build a proper Pinecone metadata filter when filenames are provided.
             # Each filename in the list is ``{thread_id}_{original_filename}``
             # (as stored during ingestion via _inject_filename_metadata).
-            pinecone_filter: Optional[Dict[str, Any]] = None
+            pinecone_filter: dict[str, Any] | None = None
             if filter:
                 pinecone_filter = {"filename": {"$in": filter}}
                 logger.info("Applying filename filter: %s", filter)

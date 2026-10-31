@@ -1,16 +1,20 @@
-from dotenv import load_dotenv
 import os
 
+from dotenv import load_dotenv
+
 load_dotenv()
+
+from evals.eval_application import run_application_eval
+from evals.eval_generator import run_generator_eval
+from evals.eval_retriever import run_retriever_eval
+from evals.harness import push_results_to_langfuse
+from src.core.logger import logger
 
 os.environ["DEEPEVAL_CONCURRENCY_LIMIT"] = "1"
 os.environ.setdefault("DEEPEVAL_PER_TASK_TIMEOUT_SECONDS_OVERRIDE", "600")
 
-from src.core.logger import logger
-from evals.eval_retriever import run_retriever_eval
-from evals.eval_generator import run_generator_eval
-from evals.eval_application import run_application_eval
-from evals.harness import push_results_to_langfuse
+
+
 
 def run_evals():
     logger.info("Running Retriever Eval")

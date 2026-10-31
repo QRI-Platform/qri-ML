@@ -1,7 +1,9 @@
-from src.domain.state import State
-from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP
-from langgraph.prebuilt import tools_condition
 from langgraph.graph import END
+from langgraph.prebuilt import tools_condition
+
+from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP
+from src.domain.state import State
+
 # def route_entry(state: State) -> str:
 #     if state.get("file_paths"):
 #         return "ingestion_node"
@@ -31,7 +33,7 @@ def route_after_orchastrator(state: State) -> str:
 
 
 def route_summary_node(state: State) -> str:
-    
+
     if len(state.get("messages", [])) > NO_OF_LAST_MESSAGES_TO_KEEP:
         return "summary_node"
     return "chat_node"

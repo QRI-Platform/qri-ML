@@ -1,9 +1,15 @@
-from pydantic import BaseModel, Field, field_validator
-from langchain_core.messages import AnyMessage
-from typing import Annotated, List, Optional, Any, TypedDict,Literal
-from langgraph.graph.message import add_messages
-from src.core.constants import DEFAULT_DEFFICULTY_LEVEL,DEFAULT_EXAM_TYPE,DEFAULT_SUBJECT_NAME,DEFAULT_TOTAL_NO_OF_QUESTIONS
+from typing import Annotated, Any, Literal, TypedDict
 
+from langchain_core.messages import AnyMessage
+from langgraph.graph.message import add_messages
+from pydantic import BaseModel, Field, field_validator
+
+from src.core.constants import (
+    DEFAULT_DEFFICULTY_LEVEL,
+    DEFAULT_EXAM_TYPE,
+    DEFAULT_SUBJECT_NAME,
+    DEFAULT_TOTAL_NO_OF_QUESTIONS,
+)
 
 
 class OrchestratorOutput(BaseModel):
@@ -20,12 +26,12 @@ class OrchestratorOutput(BaseModel):
 
 
 class QueryGenerationOutput(BaseModel):
-    queries: List[str] = Field(description="write the user refined optimised queries for vector db search")
+    queries: list[str] = Field(description="write the user refined optimised queries for vector db search")
 
 
 class ChatOutput(BaseModel):
     response: str = Field(description="Answer to the user strictly in markdown formate including emojis if needed")
-    
+
 
 
 
@@ -42,11 +48,11 @@ class Question(BaseModel):
     correct: Literal['option1', 'option2', 'option3', 'option4'] = Field(
         ..., description="The key of the correct option"
     )
-    
+
     explanation: str = Field(
         ..., description="Educational feedback displayed to the user after they answer"
     )
-    hint: Optional[str] = Field(
+    hint: str | None = Field(
         None, description="An optional hint to help the player if they struggle"
     )
     difficulty: Literal['easy', 'medium', 'hard'] = Field(
@@ -55,10 +61,10 @@ class Question(BaseModel):
     points: int = Field(
         10, description="Base XP or score awarded for answering this question correctly"
     )
-    
+
 
 class Questions_generation_schema(BaseModel):
-    questions: List[Question] = Field(..., description="A sequence of game-ready questions")
+    questions: list[Question] = Field(..., description="A sequence of game-ready questions")
 
 
 
@@ -92,13 +98,13 @@ class PerformanceGenerationSchema(BaseModel):
 
 
 class State(TypedDict):
-    messages: Annotated[List[AnyMessage], add_messages]
-    file_paths: List[str]
+    messages: Annotated[list[AnyMessage], add_messages]
+    file_paths: list[str]
     require_db_search: bool
     has_documents: bool = False  # True when Pinecone namespace has vectors for this thread
-    queries: List[str]
-    retreived_results: List[Any]
-    ai_response: Optional[str]
+    queries: list[str]
+    retreived_results: list[Any]
+    ai_response: str | None
     need_title:bool = False
 
 
@@ -116,8 +122,8 @@ class State(TypedDict):
     need_performance_generation:bool=False
     total_correct_answers:int=0
     total_questions:int=DEFAULT_TOTAL_NO_OF_QUESTIONS
-    solved_test_paper:dict={}
-    performance_schema:dict={}
+    solved_test_paper:dict=Field(default_factory=dict)
+    performance_schema:dict=Field(default_factory=dict)
 
 
 

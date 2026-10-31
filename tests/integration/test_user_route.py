@@ -1,6 +1,11 @@
-from unittest.mock import patch, AsyncMock
-from langchain_core.messages import AIMessage, SystemMessage, HumanMessage, messages_to_dict
+from unittest.mock import patch
 
+from langchain_core.messages import (
+    AIMessage,
+    HumanMessage,
+    SystemMessage,
+    messages_to_dict,
+)
 
 # ── GET /api/v1/user/conversation ───────────────────────────────────────────
 

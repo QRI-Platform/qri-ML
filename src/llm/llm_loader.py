@@ -1,7 +1,8 @@
 import sys
 from functools import lru_cache
-from typing import Optional
+
 from langchain_groq import ChatGroq
+
 from src.core.config import get_app_config
 from src.core.constants import LLM_MODEL_NAME
 from src.core.exceptions import MyException
@@ -10,10 +11,10 @@ from src.core.logger import logger
 
 @lru_cache
 def get_llm(
-    reasoning_format: Optional[str] = "parsed",  # "parsed" or "hidden" for tool-calling nodes
-    reasoning_effort: Optional[str] = "medium",  # "low", "medium", "high"
+    reasoning_format: str | None = "parsed",  # "parsed" or "hidden" for tool-calling nodes
+    reasoning_effort: str | None = "medium",  # "low", "medium", "high"
     streaming: bool = False,
-    max_tokens: Optional[int] = None,
+    max_tokens: int | None = None,
 ) -> ChatGroq:
     try:
         logger.debug(

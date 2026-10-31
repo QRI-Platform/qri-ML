@@ -1,18 +1,36 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, RemoveMessage
 
+import pytest
+from langchain_core.messages import (
+    AIMessage,
+    HumanMessage,
+    RemoveMessage,
+    SystemMessage,
+)
+
+from src.core.constants import (
+    NO_OF_LAST_MESSAGES_TO_KEEP,
+)
+from src.domain.state import (
+    Options,
+    OrchestratorOutput,
+    QueryGenerationOutput,
+    Question,
+    Questions_generation_schema,
+)
+from src.nodes.advance_nodes import summerizer, title_renamer_node
 from src.nodes.main_nodes import (
     ingestion_node,
     orchastrator_node,
     query_generation_node,
     retreiver_node,
+)
+from src.nodes.main_nodes import (
     test_generation_node as _test_generation_node,
 )
+
 _test_generation_node.__test__ = False
-from src.nodes.advance_nodes import summerizer, title_renamer_node
-from src.domain.state import OrchestratorOutput, QueryGenerationOutput, Questions_generation_schema, Question, Options
-from src.core.constants import NO_OF_LAST_MESSAGES_TO_KEEP, MAX_TOTAL_NO_OF_QUESTIONS_PER_REQUEST
+
 
 
 class TestNodesUnit:

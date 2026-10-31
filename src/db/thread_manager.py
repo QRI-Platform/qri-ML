@@ -1,13 +1,13 @@
 import os
-import sys
 import sqlite3
-from typing import List, Optional
+import sys
 from functools import lru_cache
 
-from src.core.constants import SQLITE_DB_PATH, MAX_THREADS_PER_USER
-from src.core.logger import logger
+from src.core.constants import MAX_THREADS_PER_USER, SQLITE_DB_PATH
 from src.core.exceptions import MyException
+from src.core.logger import logger
 from src.core.memory import get_checkpointer
+
 
 # user threads manager locally in sqlite --deprecated
 class ThreadManager:
@@ -51,10 +51,10 @@ class ThreadManager:
         except Exception as e:
             logger.error("Failed to delete graph checkpoint for thread=%s: %s", thread_id, str(e))
 
-    def register_thread(self, user_id: str, thread_id: str) -> Optional[str]:
+    def register_thread(self, user_id: str, thread_id: str) -> str | None:
         try:
             logger.info("Registering thread=%s for user=%s", thread_id, user_id)
-            evicted_thread_id: Optional[str] = None
+            evicted_thread_id: str | None = None
 
             with self._get_conn() as conn:
                 existing = conn.execute(
@@ -95,7 +95,7 @@ class ThreadManager:
             logger.error("register_thread failed for user=%s thread=%s", user_id, thread_id)
             raise MyException(e, sys)
 
-    def get_threads(self, user_id: str) -> List[str]:
+    def get_threads(self, user_id: str) -> list[str]:
         try:
             logger.debug("Getting threads for user=%s", user_id)
             with self._get_conn() as conn:

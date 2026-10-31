@@ -1,12 +1,14 @@
 import asyncio
-from src.core.logger import logger
-from src.core.constants import DEFAULT_INDEX_NAME
-from src.domain.config_entities import RetrieverConfig
-from src.retrievers.pinecone_retriever import get_retriever
-from src.core.memory import get_checkpointer, get_store
-from src.graphs.builder import get_graph
-from langfuse import observe
+
 from langchain_core.messages import messages_to_dict
+from langfuse import observe
+
+from src.core.constants import DEFAULT_INDEX_NAME
+from src.core.logger import logger
+from src.core.memory import get_checkpointer, get_store
+from src.domain.config_entities import RetrieverConfig
+from src.graphs.builder import get_graph
+from src.retrievers.pinecone_retriever import get_retriever
 
 
 async def delete_thread_data(thread_id: str, delay_seconds: int = 0):
@@ -40,7 +42,7 @@ async def load_conversation(thread_id: str, user_id: str):
 
         raw_messages = state.checkpoint.get('channel_values', {}).get('messages', [])
 
-        
+
         serialized_messages = messages_to_dict(raw_messages)
         return serialized_messages
 
@@ -116,7 +118,7 @@ async def delete_has_attributes(user_id: str, thread_id: str) -> bool:
         graph = get_graph()
         config = {
             "configurable": {"thread_id": thread_id, "user_id": user_id},
-        }           
+        }
         await graph.aupdate_state(config, {"has_documents": False})
 
         logger.info("toggled has_documents to False for user_id %s and thread_id %s", user_id, thread_id)

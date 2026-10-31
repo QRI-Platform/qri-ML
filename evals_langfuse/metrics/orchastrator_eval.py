@@ -1,12 +1,14 @@
 import sys
 from unittest.mock import MagicMock, patch
-from evals.common import EvaluationResult
-from src.core.logger import logger
-from src.core.exceptions import MyException
-from src.domain.state import State
-from src.nodes.main_nodes import orchastrator_node
+
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
+
+from evals.common import EvaluationResult
+from src.core.exceptions import MyException
+from src.core.logger import logger
+from src.domain.state import State
+from src.nodes.main_nodes import orchastrator_node
 
 
 async def eval_orchastrator_target(inputs: dict) -> dict:
@@ -21,7 +23,7 @@ async def eval_orchastrator_target(inputs: dict) -> dict:
     try:
         question = inputs.get("question", "Hello, this is a test message.")
         has_docs = inputs.get("has_documents", False)
-        
+
         logger.info("Executing eval_orchastrator_target | question='%s' | has_documents=%s", question, has_docs)
 
         # Construct State as a proper TypedDict dictionary
@@ -114,5 +116,5 @@ async def eval_orchastrator(input: dict = None, output: dict = None, expected_ou
         return EvaluationResult(
             name="orchastrator_accuracy",
             value=0.0,
-            comment=f"Evaluator exception: {str(e)}",
+            comment=f"Evaluator exception: {e!s}",
         )

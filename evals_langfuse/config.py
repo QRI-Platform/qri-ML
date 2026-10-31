@@ -1,8 +1,10 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
+
 from src.core.logger import logger
-from typing import List
+
+
 @dataclass
 class OrchastratorEvalConfig:
     """Configuration for the Orchastrator evaluation."""
@@ -28,7 +30,7 @@ class GeneratorEvalConfig:
 @dataclass
 class RetreiverEvalConfig:
     index_name: str = "eval-retriever"  # Pinecone index names cannot have underscores
-    file_paths: List[str] = field(
+    file_paths: list[str] = field(
         default_factory=lambda: ["evals/data/transformer.pdf"]
     )
     dataset_path: str = "evals/data/rag_eval_dataset.json"

@@ -1,6 +1,8 @@
 import langfuse
 from langfuse.api.commons.errors.not_found_error import NotFoundError
+
 from evals.harness import load_goldens_from_local
+
 
 def push_retriever_dataset(name: str, data_path: str):
     client = langfuse.Langfuse()
@@ -9,18 +11,18 @@ def push_retriever_dataset(name: str, data_path: str):
         client.get_dataset(name)
     except NotFoundError:
         client.create_dataset(name=name)
-    
+
     # Load all items from the JSON golden file
     data = load_goldens_from_local(path=data_path)
-    
+
     print(f"Syncing {len(data)} items to Langfuse dataset '{name}'...")
-    
+
     # Iterate and upsert each record into the dataset
     for item in data:
         client.create_dataset_item(
             dataset_name=name,
             # Static ID pass karne se same ID par data update hoga, duplicate entries nahi banengi
-            id=item.get("id"),  
+            id=item.get("id"),
             input={
                 "query": item.get("query")
             },
@@ -31,7 +33,7 @@ def push_retriever_dataset(name: str, data_path: str):
                 "source": item.get("source")
             }
         )
-    
+
     print(f"Successfully synced {len(data)} items to dataset '{name}' without duplicates.")
 
 
@@ -44,18 +46,18 @@ def push_generator_dataset(name: str, data_path: str):
         client.get_dataset(name)
     except NotFoundError:
         client.create_dataset(name=name)
-    
+
     # Load all items from the JSON golden file
     data = load_goldens_from_local(path=data_path)
-    
+
     print(f"Syncing {len(data)} items to Langfuse dataset '{name}'...")
-    
+
     # Iterate and upsert each record into the dataset
     for item in data:
         client.create_dataset_item(
             dataset_name=name,
             # Static ID pass karne se same ID par data update hoga, duplicate entries nahi banengi
-            id=item.get("id"),  
+            id=item.get("id"),
             input={
                 "query": item.get("query")
             },
@@ -66,7 +68,7 @@ def push_generator_dataset(name: str, data_path: str):
                 "source": item.get("source")
             }
         )
-    
+
     print(f"Successfully synced {len(data)} items to dataset '{name}' without duplicates.")
 
 
@@ -81,18 +83,18 @@ def push_application_dataset(name: str, data_path: str):
         client.get_dataset(name)
     except NotFoundError:
         client.create_dataset(name=name)
-    
+
     # Load all items from the JSON golden file
     data = load_goldens_from_local(path=data_path)
-    
+
     print(f"Syncing {len(data)} items to Langfuse dataset '{name}'...")
-    
+
     # Iterate and upsert each record into the dataset
     for item in data:
         client.create_dataset_item(
             dataset_name=name,
             # Static ID pass karne se same ID par data update hoga, duplicate entries nahi banengi
-            id=item.get("id"),  
+            id=item.get("id"),
             input={
                 "question": item.get("question")
             },
@@ -103,7 +105,7 @@ def push_application_dataset(name: str, data_path: str):
                 "source": item.get("source")
             }
         )
-    
+
     print(f"Successfully synced {len(data)} items to dataset '{name}' without duplicates.")
 
 

@@ -2,12 +2,12 @@
 import json
 import os
 from datetime import datetime
-from langfuse.api.commons.errors.not_found_error import NotFoundError
-from src.core.logger import logger
+from typing import Any
 
-from typing import Optional, Dict, Any
 import langfuse
 from dotenv import load_dotenv
+
+from src.core.logger import logger
 
 load_dotenv()
 
@@ -66,10 +66,10 @@ def summarize_by_metric(result):
 
 def push_summary_to_langfuse(
     title: str,
-    summary: Optional[Dict[str, Any]] = None,
-    result: Optional[Any] = None,
-    run_name: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None,
+    summary: dict[str, Any] | None = None,
+    result: Any | None = None,
+    run_name: str | None = None,
+    metadata: dict[str, Any] | None = None,
 ):
     """Push per-metric summary to Langfuse as numeric scores under a named run/session."""
     if summary is None:
@@ -123,10 +123,10 @@ def push_summary_to_langfuse(
 
 
 def push_deepeval_result_to_langfuse(
-    result: Optional[Any],
+    result: Any | None,
     title: str = "eval_results",
-    run_name: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None,
+    run_name: str | None = None,
+    metadata: dict[str, Any] | None = None,
 ):
     """Push each DeepEval test result and metric to Langfuse so failed datapoints are visible as red items with reasons."""
     if result is None:
@@ -191,11 +191,11 @@ def push_deepeval_result_to_langfuse(
 
 
 def push_results_to_langfuse(
-    result: Optional[Any] = None,
+    result: Any | None = None,
     title: str = "eval_results",
-    summary: Optional[Dict[str, Any]] = None,
-    run_name: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None,
+    summary: dict[str, Any] | None = None,
+    run_name: str | None = None,
+    metadata: dict[str, Any] | None = None,
 ):
     """Backward-compatible wrapper; accepts either a DeepEval result or precomputed summary."""
     item_payload = push_deepeval_result_to_langfuse(

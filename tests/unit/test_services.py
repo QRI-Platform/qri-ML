@@ -1,14 +1,15 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from langchain_core.messages import HumanMessage, AIMessage, messages_to_dict
+
+import pytest
+from langchain_core.messages import AIMessage, HumanMessage
 
 from src.services.conversation_service import (
-    delete_thread_data,
+    delete_long_term_memory_key,
     delete_pinecone_namespace,
-    load_conversation,
+    delete_thread_data,
     delete_user_conversation,
     get_user_long_term_memory,
-    delete_long_term_memory_key,
+    load_conversation,
     upsert_long_term_memory,
 )
 

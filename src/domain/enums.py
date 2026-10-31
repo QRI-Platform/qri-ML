@@ -1,4 +1,4 @@
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 
 
 # abc method for pipeline definition (in python, used for abstraction)

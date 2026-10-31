@@ -1,10 +1,10 @@
-from unittest.mock import MagicMock, AsyncMock
-from fastapi.testclient import TestClient
-from api.main import app
-from src.retrievers.pinecone_retriever import Retriever
-from src.domain.config_entities import RetrieverConfig
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
+from fastapi.testclient import TestClient
+
+from api.main import app
+from src.domain.config_entities import RetrieverConfig
 
 
 @pytest.fixture
@@ -59,4 +59,3 @@ def mock_checkpointer():
     cp.aget_tuple.return_value = None
     cp.adelete_thread.return_value = None
     return cp
- 

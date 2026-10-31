@@ -1,17 +1,21 @@
 import sys
 from functools import lru_cache
-from langchain_core.messages import HumanMessage
 
-from src.core.logger import logger
-from src.core.exceptions import MyException
-from src.core.constants import DEFAULT_DEFFICULTY_LEVEL,DEFAULT_EXAM_TYPE,DEFAULT_SUBJECT_NAME,DEFAULT_TOTAL_NO_OF_QUESTIONS
-from src.domain.enums import Pipeline
-from src.graphs.builder import get_graph
-from src.domain.state import State
+from langchain_core.messages import HumanMessage
 from langfuse import observe, propagate_attributes
 from langfuse.langchain import CallbackHandler
-from src.llm.llm_loader import get_llm
-from typing import Literal
+
+from src.core.constants import (
+    DEFAULT_DEFFICULTY_LEVEL,
+    DEFAULT_EXAM_TYPE,
+    DEFAULT_SUBJECT_NAME,
+    DEFAULT_TOTAL_NO_OF_QUESTIONS,
+)
+from src.core.exceptions import MyException
+from src.core.logger import logger
+from src.domain.enums import Pipeline
+from src.graphs.builder import get_graph
+
 
 class GraphRunnerPipeline(Pipeline):
     def __init__(self):
@@ -19,11 +23,11 @@ class GraphRunnerPipeline(Pipeline):
         logger.info("GraphRunnerPipeline initialized")
 
     @observe(name="GraphRunnerPipeline.initiate")
-    async def initiate(self, user_id: str, 
-                       thread_id: str, 
-                       file_paths: list = None, 
+    async def initiate(self, user_id: str,
+                       thread_id: str,
+                       file_paths: list = None,
                        message: str = None,
-                       metadata: dict = {}, 
+                       metadata: dict = {},
                        need_title: bool = False,
                        ):
         try:
@@ -43,7 +47,7 @@ class GraphRunnerPipeline(Pipeline):
                     "has_documents":True,
                     "need_title": need_title
                 }
-                
+
 
             callbacks = []
             try:
@@ -119,11 +123,11 @@ class GraphRunnerPipeline(Pipeline):
                                               total_questions:int,
                                               solved_test_paper:dict,
                                               ):
-        
+
         try:
             need_performance_generation:bool=True
             thread_id = "None"
-            
+
             logger.info("Pipeline.initiate_performance_generation called: user=%s thread=%s",
                         user_id, thread_id)
 
@@ -152,12 +156,12 @@ class GraphRunnerPipeline(Pipeline):
 
             with propagate_attributes(session_id=thread_id, user_id=user_id):
                 return await self.graph.ainvoke(state, config=config)
-            
+
 
         except Exception as e:
             logger.error("Pipeline.initiate_performace_generation failed: %s", str(e))
             raise MyException(e, sys)
-            
+
 
 
 

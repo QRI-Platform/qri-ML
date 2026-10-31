@@ -1,51 +1,42 @@
-import sys
 import asyncio
-from src import tools
-from src.core.logger import logger
-from src.core.exceptions import MyException
-from src.services.data_ingestion_service import DataIngestion
-from src.domain.config_entities import DataIngestionConfig, RetrieverConfig
-from src.domain.artifacts import DataIngestionArtifact
-from src.llm.llm_loader import get_llm
-from src.retrievers.pinecone_retriever import get_retriever
-from src.retrievers.pinecone_client import get_pinecone_client
-from src.core.memory import get_store
-from langchain_core.messages import AIMessage, SystemMessage
-from langchain_core.runnables import RunnableConfig
-from langgraph.store.base import BaseStore
-from src.prompts.templates import (QUERY_GENERATION_PROMPT,
-                                   ORCHESTRATOR_PROMPT,
-                                   CHAT_PROMPT, 
-                                   SUMMARY_NODE_PROMPT, 
-                                   AGENT_PROMPT,
-                                   TEST_PAPER_GENERATION_PROMPT
-                                   )
-from src.core.constants import (NO_OF_LAST_MESSAGES_TO_KEEP, 
-                                LENGTH_OF_SUMMARY_GENERATED, 
-                                MINIMUM_LENGTH_OF_LONG_TERM_MEMORY, 
-                                DEFAULT_INDEX_NAME, 
-                                LLM_OUTPUT_MAX_WORDS,
-                                MAX_TOOL_CALL_LIMIT,
-                                MAX_TOTAL_NO_OF_QUESTIONS_PER_REQUEST,
-                                )
-from src.domain.state import (State, 
-                              QueryGenerationOutput, 
-                              OrchestratorOutput, 
-                              OrchastratorOutput, 
-                              ChatOutput,
-                              Questions_generation_schema
-                              )
-from langfuse import observe
-from typing import Optional,List,Optional
-from langchain_core.messages import HumanMessage
-from src.tools.solver_tool import solver
-from src.tools.retreiver_tool import retreiver
-from src.tools.save_long_term_memory_tool import save_long_term_memory
+import re
+import sys
+
 from langchain.agents import create_agent
 from langchain.agents.middleware import ToolCallLimitMiddleware
 from langchain_core.callbacks.manager import adispatch_custom_event
-import re
-import asyncio
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.runnables import RunnableConfig
+from langfuse import observe
+from langgraph.store.base import BaseStore
+
+from src.core.constants import (
+    LLM_OUTPUT_MAX_WORDS,
+    MAX_TOOL_CALL_LIMIT,
+    MAX_TOTAL_NO_OF_QUESTIONS_PER_REQUEST,
+)
+from src.core.exceptions import MyException
+from src.core.logger import logger
+from src.domain.config_entities import DataIngestionConfig, RetrieverConfig
+from src.domain.state import (
+    OrchestratorOutput,
+    QueryGenerationOutput,
+    Questions_generation_schema,
+    State,
+)
+from src.llm.llm_loader import get_llm
+from src.prompts.templates import (
+    AGENT_PROMPT,
+    CHAT_PROMPT,
+    ORCHESTRATOR_PROMPT,
+    QUERY_GENERATION_PROMPT,
+    TEST_PAPER_GENERATION_PROMPT,
+)
+from src.retrievers.pinecone_retriever import get_retriever
+from src.services.data_ingestion_service import DataIngestion
+from src.tools.retreiver_tool import retreiver
+from src.tools.save_long_term_memory_tool import save_long_term_memory
+from src.tools.solver_tool import solver
 
 agent_tool_limit_middleware = ToolCallLimitMiddleware(run_limit=MAX_TOOL_CALL_LIMIT, exit_behavior="end")
 
@@ -82,7 +73,7 @@ async def ingestion_node(state: State, config: RunnableConfig):
 async def orchastrator_node(state: State, config: RunnableConfig) -> dict:
     try:
         logger.info("orchastrator_node started")
-        thread_id = config.get("configurable", {}).get("thread_id", "unknown")
+        # thread_id = config.get("configurable", {}).get("thread_id", "unknown")
 
         # --- Check if this thread's namespace has any vectors in Pinecone ---
         has_documents = state.get("has_documents",False)
@@ -98,7 +89,7 @@ async def orchastrator_node(state: State, config: RunnableConfig) -> dict:
         result = await structured_llm.ainvoke(prompt_input)
 
         logger.info("Orchestrator LLM decision: require_db_search=%s", result.require_db_search)
-        
+
         # --- Safe Move ----
         if result.require_db_search and not has_documents:
             logger.warning("Orchestrator LLM requested DB search but no documents found — overriding to require_db_search=False")
@@ -119,10 +110,10 @@ async def query_generation_node(state: State) -> dict:
             method="json_schema",
             strict=True,
         )
-        
+
         prompt_input = QUERY_GENERATION_PROMPT.invoke({"messages": state.get("messages", [])})
         result = await structured_llm.ainvoke(prompt_input)
-        
+
         logger.info("Generated %d queries", len(result.queries))
         return {"queries": result.queries}
     except Exception as e:
@@ -141,7 +132,7 @@ async def retreiver_node(state: State, config: RunnableConfig):
         retriever = get_retriever(retriever_config=retriever_config)
         vector_store = await retriever.create_retriever()
 
-        filters: Optional[List[str]] = None
+        filters: list[str] | None = None
         # Match @filename.ext patterns the user typed in chat, e.g. @report.pdf
         pattern = r'@(\w+\.(?:pdf|txt|docx|doc))'
         if messages and isinstance(messages[-1], HumanMessage):
@@ -286,7 +277,7 @@ async def agent_node(
     config: RunnableConfig,
     store: BaseStore,
     *,
-    agent_tools: Optional[List] = None,
+    agent_tools: list | None = None,
 ):
     try:
         user_id = config.get("configurable", {}).get("user_id", "unknown")
@@ -402,7 +393,7 @@ async def agent_node(
 async def test_generation_node(state: State):
     """Generates a test paper based on the given test configuration."""
     logger.info("Entered in the test_generation_node")
-    
+
     total_requested = state.get('total_no_of_questions', MAX_TOTAL_NO_OF_QUESTIONS_PER_REQUEST)
 
     async def generate_test_paper(no_of_questions: int):
@@ -433,16 +424,16 @@ async def test_generation_node(state: State):
     else:
         full_chunks = total_requested // MAX_TOTAL_NO_OF_QUESTIONS_PER_REQUEST
         remainder = total_requested % MAX_TOTAL_NO_OF_QUESTIONS_PER_REQUEST
-        
+
         for _ in range(full_chunks):
             tasks.append(generate_test_paper(MAX_TOTAL_NO_OF_QUESTIONS_PER_REQUEST))
-        
+
         if remainder > 0:
             tasks.append(generate_test_paper(remainder))
 
     lst = await asyncio.gather(*tasks)
     print(lst)
-    
+
     # Fast O(N) merge using a flat comprehension
     merged_questions = [
         q

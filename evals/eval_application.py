@@ -1,9 +1,7 @@
 import asyncio
 import glob
 import json
-import os
 import uuid
-from typing import Optional
 
 from deepeval import evaluate
 from deepeval.evaluate.configs import AsyncConfig, ErrorConfig
@@ -14,14 +12,15 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.store.memory import InMemoryStore
-from src.core.logger import logger
-from src.core import memory as memory_module
+
 from evals.common import OLLAMA_JUDGE_MODEL, get_judge
 from evals.harness import (
     load_goldens,
     print_summary,
     summarize_by_metric,
 )
+from src.core import memory as memory_module
+from src.core.logger import logger
 from src.domain.config_entities import DataIngestionConfig, RetrieverConfig
 from src.graphs.builder import get_graph
 from src.retrievers.pinecone_retriever import get_retriever
@@ -72,7 +71,7 @@ async def _generate_answer(
     config: RunnableConfig = {
         "configurable": {"thread_id": thread_id, "user_id": "eval-user"}
     }
-   
+
     result = await graph.ainvoke({"messages": messages}, config=config)
     return result.get("ai_response", "")
 
@@ -100,7 +99,7 @@ def _build_metrics() -> list[GEval]:
         strict_mode=True,
         model=judge,
         async_mode=False,
-        
+
     )
     completeness = GEval(
         name="Completeness",
@@ -146,7 +145,7 @@ def _build_metrics() -> list[GEval]:
     return [correctness, completeness, style]
 
 
-async def run(run_name: Optional[str] = None):
+async def run(run_name: str | None = None):
     goldens = load_goldens(GOLDEN_PATH)
     file_paths = sorted(glob.glob(f"{DATASET_PATH}/*.pdf"))
     if not file_paths:
@@ -230,17 +229,17 @@ def _configure_eval_runtime():
     memory_module._store = InMemoryStore()
 
 
-def run_local(run_name: Optional[str] = None):
+def run_local(run_name: str | None = None):
     """Run application evaluation against a fresh ingestion of the PDF dataset."""
     return asyncio.run(run(run_name=run_name))
 
 
-def run_application_eval(verbose: bool = False, run_name: Optional[str] = None):
+def run_application_eval(verbose: bool = False, run_name: str | None = None):
     _configure_eval_runtime()
     summary, result = run_local(run_name=run_name)
     if verbose:
         print_summary(APPLICATION_NAME, summary)
-    
+
     return summary, result
 
 

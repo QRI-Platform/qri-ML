@@ -1,34 +1,36 @@
+import asyncio
 import os
 import sys
-import asyncio
+from collections.abc import AsyncIterator, Iterator
 from functools import lru_cache
-from typing import List, Literal, Iterator, AsyncIterator
+from typing import Literal
 
+import numpy as np
 import pymupdf
 import pymupdf4llm
-from PIL import Image
-import numpy as np
-from rapid_latex_ocr import LatexOCR
 import rapid_latex_ocr.main
+from docling.datamodel.accelerator_options import AcceleratorOptions
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.document_converter import (
+    DocumentConverter,
+    ImageFormatOption,
+    PdfFormatOption,
+)
+from langchain_core.document_loaders import BaseLoader
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langfuse import observe
+from PIL import Image
+from rapid_latex_ocr import LatexOCR
 from rapidocr_onnxruntime import RapidOCR
 
-from docling.document_converter import DocumentConverter, PdfFormatOption, ImageFormatOption
-from docling.datamodel.pipeline_options import PdfPipelineOptions
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.accelerator_options import AcceleratorOptions
-
-from langchain_docling import DoclingLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.documents import Document
-from langchain_core.document_loaders import BaseLoader
-
-from langfuse import observe
-from src.retrievers.pinecone_retriever import Retriever
-from src.domain.config_entities import DataIngestionConfig
-from src.domain.artifacts import DataIngestionArtifact
 from src.core.constants import DATA_INGEST_NUM_OF_WORKERS
-from src.core.logger import logger
 from src.core.exceptions import MyException
+from src.core.logger import logger
+from src.domain.artifacts import DataIngestionArtifact
+from src.domain.config_entities import DataIngestionConfig
+from src.retrievers.pinecone_retriever import Retriever
 
 
 # --- Monkey-patch for NumPy 2.x and array/PIL compatibility in rapid_latex_ocr ---
@@ -180,7 +182,7 @@ class DataIngestion:
         logger.debug("DataIngestion initialized for %d files", len(data_ingestion_config.files_path))
 
     @staticmethod
-    def _inject_filename_metadata(documents: List[Document], file_path: str, namespace: str) -> List[Document]:
+    def _inject_filename_metadata(documents: list[Document], file_path: str, namespace: str) -> list[Document]:
         """Inject a unique 'filename' key into each document's metadata."""
         original_name = os.path.basename(file_path)
         tagged_name = f"{namespace}_{original_name}" if namespace else original_name
@@ -195,7 +197,7 @@ class DataIngestion:
         return documents
 
     @observe(name="docling_file_loader")
-    async def get_loader(self) -> List[CustomLoader]:
+    async def get_loader(self) -> list[CustomLoader]:
         try:
             logger.info("Initializing loaders for %d input files", len(self.data_ingestion_config.files_path))
             loaders = [
@@ -214,7 +216,7 @@ class DataIngestion:
 
     @staticmethod
     @observe(name="document_chunker")
-    async def chunk_docs(documents: List[Document], chunk_size: int, chunk_overlap: int) -> List[Document]:
+    async def chunk_docs(documents: list[Document], chunk_size: int, chunk_overlap: int) -> list[Document]:
         try:
             logger.info("Splitting %d documents into chunks (size=%d, overlap=%d)", len(documents), chunk_size, chunk_overlap)
             splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
@@ -226,7 +228,7 @@ class DataIngestion:
             raise MyException(e, sys)
 
     @observe(name="save_to_vector_db")
-    async def save_to_db(self, documents: List[Document]):
+    async def save_to_db(self, documents: list[Document]):
         try:
             logger.info("Saving %d documents to vector store", len(documents))
             vector_store = await self.retriever.create_retriever()
@@ -241,12 +243,12 @@ class DataIngestion:
         try:
             logger.info("Starting data ingestion pipeline")
             loaders = await self.get_loader()
-            all_documents: List[Document] = []
+            all_documents: list[Document] = []
 
             namespace = self.data_ingestion_config.namespace or ""
             loop = asyncio.get_running_loop()
 
-            async def load_one(file_path: str, loader: CustomLoader) -> List[Document]:
+            async def load_one(file_path: str, loader: CustomLoader) -> list[Document]:
                 docs = await loop.run_in_executor(None, loader.load)
                 return self._inject_filename_metadata(
                     documents=docs,

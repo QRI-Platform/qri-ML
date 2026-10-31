@@ -1,15 +1,15 @@
-from typing import Optional, List
 from dataclasses import dataclass
+
 from src.core.constants import (
-    DEFAULT_INDEX_NAME,
-    EMBEDDING_DIM,
-    METRIC,
+    CHUNK_OVERLAP,
+    CHUNK_SIZE,
     CLOUD_PROVIDER,
     CLOUD_REGION,
+    DEFAULT_INDEX_NAME,
+    EMBEDDING_DIM,
     EMBEDDING_MODEL_NAME,
+    METRIC,
     RETRIEVER_TOP_K,
-    CHUNK_SIZE,
-    CHUNK_OVERLAP,
 )
 
 
@@ -22,13 +22,13 @@ class RetrieverConfig:
     region: str = CLOUD_REGION
     model_name: str = EMBEDDING_MODEL_NAME
     k: int = RETRIEVER_TOP_K
-    namespace: Optional[str] = None
+    namespace: str | None = None
 
 
 @dataclass
 class DataIngestionConfig:
-    files_path: List[str]
+    files_path: list[str]
     index_name: str = DEFAULT_INDEX_NAME
-    namespace: Optional[str] = None
+    namespace: str | None = None
     chunk_size: int = CHUNK_SIZE
     chunk_overlap: int = CHUNK_OVERLAP

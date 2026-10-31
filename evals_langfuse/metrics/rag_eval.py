@@ -1,44 +1,41 @@
 import sys
-from typing import Any, Dict, List, Optional
+
+from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
-from langchain_core.documents import Document
-from evals.common import get_llm, EvaluationResult
-from langchain_core.prompts import ChatPromptTemplate
-
-from src.core.logger import logger
+from evals.common import EvaluationResult, get_llm
 from src.core.exceptions import MyException
+from src.core.logger import logger
+from src.domain.config_entities import DataIngestionConfig, RetrieverConfig
+from src.retrievers.pinecone_retriever import Retriever, get_retriever
 from src.services.data_ingestion_service import DataIngestion
-from src.retrievers.pinecone_retriever import get_retriever, Retriever
-from src.domain.config_entities import RetrieverConfig, DataIngestionConfig
 
 
 # --- Pydantic Schema for LLM Judge ---
 class RetrieverAccuracyOutput(BaseModel):
     score: float = Field(
-        ..., 
+        ...,
         description="Float score between 0.0 and 1.0 indicating if the retrieved documents contain the expected answer."
     )
     reasoning: str = Field(
-        ..., 
+        ...,
         description="Brief explanation of why the retrieved documents match or do not match the expected answer."
     )
 
 
 # Module-level singletons for cached retriever/vector store
-_CACHED_RETRIEVER: Optional[Retriever] = None
+_CACHED_RETRIEVER: Retriever | None = None
 _CACHED_VECTOR_STORE = None
 
 
-async def setup_rag_once(file_paths:List[str],index_name):
+async def setup_rag_once(file_paths:list[str],index_name):
     """Initializes and caches the Pinecone vector store and retriever once."""
     global _CACHED_RETRIEVER, _CACHED_VECTOR_STORE
     if _CACHED_VECTOR_STORE is not None and _CACHED_RETRIEVER is not None:
         return _CACHED_RETRIEVER, _CACHED_VECTOR_STORE
 
     index_name: str = index_name
-    file_paths: List[str] = file_paths
+    file_paths: list[str] = file_paths
 
     retriever_config = RetrieverConfig(
         index_name=index_name
@@ -55,7 +52,7 @@ async def setup_rag_once(file_paths:List[str],index_name):
     await data_ingestor.ingest()
 
     vector_store = await retriever.create_retriever()
-    
+
     _CACHED_RETRIEVER = retriever
     _CACHED_VECTOR_STORE = vector_store
 
@@ -137,5 +134,5 @@ Evaluation Instructions:
         return EvaluationResult(
             name="retriever_accuracy",
             value=0.0,
-            comment=f"Evaluator exception: {str(e)}",
+            comment=f"Evaluator exception: {e!s}",
         )

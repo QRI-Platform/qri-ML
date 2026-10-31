@@ -1,9 +1,11 @@
 import sys
 from functools import lru_cache
+
 from pinecone import Pinecone
+
 from src.core.config import get_app_config
-from src.core.logger import logger
 from src.core.exceptions import MyException
+from src.core.logger import logger
 
 
 @lru_cache

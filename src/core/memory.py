@@ -1,10 +1,16 @@
 import sys
-from psycopg_pool import AsyncConnectionPool
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langgraph.store.postgres.aio import AsyncPostgresStore
+
 from langgraph.checkpoint.base import BaseCheckpointSaver
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.store.base import BaseStore
 from langgraph.store.base.batch import AsyncBatchedBaseStore
+from langgraph.store.postgres.aio import AsyncPostgresStore
+from psycopg_pool import AsyncConnectionPool
+
+from src.core.config import get_app_config
+from src.core.constants import MAXIMUM_CONNECTION_POOL_SIZE
+from src.core.exceptions import MyException
+from src.core.logger import logger
 
 # Monkey-patch AsyncBatchedBaseStore.__del__ to prevent AttributeError when _task attribute is missing on deallocation
 _orig_del = getattr(AsyncBatchedBaseStore, "__del__", None)
@@ -22,10 +28,6 @@ if not hasattr(AsyncBatchedBaseStore, "_task"):
 if not hasattr(AsyncPostgresStore, "_task"):
     AsyncPostgresStore._task = None
 
-from src.core.logger import logger
-from src.core.exceptions import MyException
-from src.core.config import get_app_config
-from src.core.constants import MAXIMUM_CONNECTION_POOL_SIZE
 
 # Neon DB Connection String
 DB_URI = get_app_config().postgres_sql_url
@@ -54,35 +56,35 @@ def get_store() -> BaseStore:
 
 async def init_db_services():
     """
-    Call this inside FastAPI's lifespan on application startup 
+    Call this inside FastAPI's lifespan on application startup
     when the async event loop is active.
     """
     global pool, _checkpointer, _store
     try:
         logger.debug("Initializing Async Connection Pool, Checkpointer, and Store...")
-        
+
         if pool is None or pool.closed:
             pool = AsyncConnectionPool(
-                conninfo=DB_URI, 
-                max_size=MAXIMUM_CONNECTION_POOL_SIZE, 
+                conninfo=DB_URI,
+                max_size=MAXIMUM_CONNECTION_POOL_SIZE,
                 max_idle=30,
                 max_lifetime=300,
                 check=AsyncConnectionPool.check_connection,
                 kwargs={"autocommit": True},
                 open=False
             )
-            
+
         # 1. Open Connection Pool
         await pool.open()
-        
+
         # 2. Instantiate checkpointer and store inside active event loop
         _checkpointer = AsyncPostgresSaver(pool)
         _store = AsyncPostgresStore(pool)
-        
+
         # 3. Setup Postgres tables
         await _checkpointer.setup()
         await _store.setup()
-        
+
         logger.info("Async PostgresSaver and Store initialized successfully")
     except Exception as e:
         raise MyException(e, sys)

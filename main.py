@@ -1,8 +1,9 @@
 from dotenv import load_dotenv
+
 load_dotenv()
-import sys
 import subprocess
-from api.main import app
+import sys
+
 
 def dev():
     cmd = [
@@ -40,4 +41,3 @@ def start():
 
 if __name__ == "__main__":
     dev()
-    

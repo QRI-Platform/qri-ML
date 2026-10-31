@@ -1,15 +1,15 @@
-from typing import List
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import StreamingResponse, JSONResponse
-from fastapi.exceptions import HTTPException
-from src.core.logger import logger
-from src.core.exceptions import MyException
-from api.middlewares.multi_middleware import multer_middleware
-from api.schemas.chat_schema import ChatRequest,TestGenerationRequest
-from api.middlewares.authentication_middleware import authenticate_user
-from src.pipelines.graph_runner_pipeline import get_graph_runner_pipeline
-from typing import Any
 import json
+from typing import Any
+
+from fastapi import APIRouter, Depends, Request
+from fastapi.exceptions import HTTPException
+from fastapi.responses import JSONResponse, StreamingResponse
+
+from api.middlewares.authentication_middleware import authenticate_user
+from api.middlewares.multi_middleware import multer_middleware
+from api.schemas.chat_schema import ChatRequest
+from src.core.logger import logger
+from src.pipelines.graph_runner_pipeline import get_graph_runner_pipeline
 
 router = APIRouter(dependencies=[Depends(authenticate_user)])
 
@@ -89,7 +89,7 @@ async def stream_chat(message: str, user_id: str, thread_id: str, metadata: dict
         401: {"description": "Missing or invalid user_id / thread_id."},
     },
 )
-async def ingest_vec_data(request: Request, file_paths: List[str] = Depends(multer_middleware)):
+async def ingest_vec_data(request: Request, file_paths: list[str] = Depends(multer_middleware)):
     """
     Upload one or more documents to be parsed, chunked, and stored in the user's
     dedicated Pinecone namespace (`thread_id`).

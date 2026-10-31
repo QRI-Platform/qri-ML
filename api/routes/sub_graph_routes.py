@@ -1,14 +1,12 @@
-from fastapi import APIRouter,Depends,Request,Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException
-from src.core.logger import logger
-from api.schemas.chat_schema import TestGenerationRequest
-from src.pipelines.graph_runner_pipeline import get_graph_runner_pipeline
+from fastapi.responses import JSONResponse
+
 from api.middlewares.authentication_middleware import authenticate_only_user
-
-
-
+from api.schemas.chat_schema import TestGenerationRequest
+from src.core.logger import logger
+from src.pipelines.graph_runner_pipeline import get_graph_runner_pipeline
 
 router = APIRouter(dependencies=[Depends(authenticate_only_user)])
 
@@ -52,4 +50,3 @@ async def generate_test_paper(request:Request,payload:TestGenerationRequest=Quer
     except Exception as e:
         logger.exception("Test paper generation failed: %s", str(e))
         raise HTTPException(status_code=400,detail={"success":False,"data":None,"message":str(e)})
-    

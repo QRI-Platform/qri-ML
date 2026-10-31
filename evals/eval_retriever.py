@@ -1,24 +1,22 @@
 
-import os
-import glob
 import asyncio
-from typing import List, Optional
+import glob
 
-from deepeval.test_case import LLMTestCase
-from deepeval.metrics import ContextualRecallMetric, ContextualPrecisionMetric
 from deepeval import evaluate
 from deepeval.evaluate.configs import AsyncConfig, ErrorConfig
+from deepeval.metrics import ContextualPrecisionMetric, ContextualRecallMetric
+from deepeval.test_case import LLMTestCase
 
+from evals.common import OLLAMA_JUDGE_MODEL, get_judge
 from evals.harness import (
     load_goldens,
     print_summary,
     summarize_by_metric,
 )
-from evals.common import OLLAMA_JUDGE_MODEL, get_judge
 from src.core.logger import logger
-from src.domain.config_entities import RetrieverConfig, DataIngestionConfig
-from src.services.data_ingestion_service import DataIngestion
+from src.domain.config_entities import DataIngestionConfig, RetrieverConfig
 from src.retrievers.pinecone_retriever import Retriever, get_retriever
+from src.services.data_ingestion_service import DataIngestion
 
 # ==================== Constants ====================
 GOLDEN_PATH = "Retriever_Eval"
@@ -37,7 +35,7 @@ BATCH_SIZE = 3
 
 # ==================== Ingest Document ====================
 
-async def ingest_document(folder_path: str, retriever: Optional[Retriever] = None):
+async def ingest_document(folder_path: str, retriever: Retriever | None = None):
     """Ingest all PDFs in folder_path into the evaluation namespace using DataIngestion."""
     file_paths = glob.glob(f"{folder_path}/*.pdf")
     if not file_paths:
@@ -80,7 +78,7 @@ async def run(retriever: Retriever, run_name=None):
             query = g["query"]
             vector_store = await retriever.create_retriever()
 
-            filters: Optional[List[str]] = None
+            filters: list[str] | None = None
             retrieved = []
 
             search_task = retriever.get_similar_documents(
@@ -99,12 +97,12 @@ async def run(retriever: Retriever, run_name=None):
                     retrieval_context=retrieval_context,
                     actual_output="",
                 )
-            
+
 
         for i in range(0, len(loaded_goldens), BATCH_SIZE):
             tasks = [process_query(g) for g in loaded_goldens[i:i+BATCH_SIZE]]
 
-            test_cases.extend(await asyncio.gather(*tasks))       
+            test_cases.extend(await asyncio.gather(*tasks))
 
         metrics = [
             ContextualRecallMetric(
@@ -152,10 +150,10 @@ async def run(retriever: Retriever, run_name=None):
             namespace=RETRIEVER_NAMESPACE,
         )
 
-    
 
 
-def run_local(run_name=None, folder_to_ingest: Optional[str] = None):
+
+def run_local(run_name=None, folder_to_ingest: str | None = None):
     """Standalone convenience: optionally ingest, build the retriever, then run."""
     retriever_config = RetrieverConfig(
         model_name=EMBEDDING_MODEL,
@@ -181,5 +179,5 @@ def run_retriever_eval(verbose=False):
 
 if __name__ == "__main__":
     run_retriever_eval(verbose=True)
-    
+
 
